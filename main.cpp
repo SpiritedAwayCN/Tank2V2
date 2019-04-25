@@ -1,4 +1,4 @@
-// Tank2 游戏样例程序
+﻿// Tank2 游戏样例程序
 // 随机策略
 // 作者：289371298 upgraded from zhouhy
 // https://www.botzone.org.cn/games/Tank2
@@ -10,6 +10,7 @@
 #include <ctime>
 #include <cstring>
 #include <queue>
+#include <iomanip>
 #ifdef _BOTZONE_ONLINE
 #include "jsoncpp/json.h"
 #else
@@ -23,6 +24,11 @@ using std::endl;
 using std::flush;
 using std::getline;
 using std::queue;
+
+struct Coordinate{
+	int x, y;
+};
+
 namespace TankGame
 {
 	using std::stack;
@@ -32,6 +38,8 @@ namespace TankGame
 #ifdef _MSC_VER
 #pragma region 常量定义和说明
 #endif
+	//这个是自写的
+	const int next_step[4][2] = { {1,0},{-1,0},{0,1},{0,-1} };
 
 	enum GameResult
 	{
@@ -705,6 +713,298 @@ namespace TankGame
 		field->nextAction[field->mySide][1] = tank1;
 		cout << ">>>BOTZONE_REQUEST_KEEP_RUNNING<<<" << endl;
 	}
+
+	//以下是自写部分
+
+	//概率相加，应该看得懂意思
+	inline void AddProbability(double& P, double value) {
+		P = 1 - (1 - P)*(1 - value);
+	}
+
+	//是否可行走（空地或坦克，第二个参数设置为true则不能通过坦克
+	inline bool ItemIsAccessible(const FieldItem item, bool IgnoreTank = true) {
+		if (item == None) return true;
+		if (item == Blue0 || item == Red0 || item == Blue1 || item == Red1) return IgnoreTank;
+		return false;
+	}
+
+	//是否可通过子弹
+	inline bool CanBulletAcross(const FieldItem item, bool IgnoreTank = true) {
+		if (item == None || item == Water) return true;
+		if (item == Blue0 || item == Red0 || item == Blue1 || item == Red1) return IgnoreTank;
+		return false;
+	}
+
+	//判断方的Tank_id号坦克（或者传Fielditem）是否在某个tank的射程内，返回对方坦克的id
+	inline int IsInShotRange(int Tank_id, int side = field->mySide) {
+		//晚点写 @谢宇飞
+
+		return -1; //不在任何Tank的射程内，返回-1
+	}
+
+
+	int my_action[tankPerSide] = { -2, -2 };
+	int min_step_to_base[sideCount][fieldHeight][fieldWidth];
+	double shot_range[sideCount][fieldHeight][fieldWidth]; //希望这个数组存的是类似于概率的数组，表示接下来的几步内某个进入某方射程的概率
+	queue<Coordinate> BFS_generate_queue;
+
+	inline double GetRandom() {
+		return (rand() % 10000)*1.0 / 10000;
+	}
+
+	inline bool IsTank(FieldItem item) {
+		return item >= Blue0 && item < Water;
+	}
+
+	inline Action Get_My_Action(int my_dir, bool shoot) {
+		//mydir 0123->下上右左  官方 0123->上右下左
+		int number = (my_dir == 3 ? 3 : (my_dir + 2) % 3);
+		if (shoot) number += 4;
+		return Action(number);
+	}
+
+	//获取(x,y)处朝某方向射出的子弹打到的第一个目标
+	inline FieldItem Get_Shot_Item(int x, int y, int dir) {
+		
+		if (my_action[0] >= 0 && my_action[0] <= 3) {
+
+		}
+	}
+
+	//入队处理，仅限初始化最小数组时调用
+	inline void push_BFS_queue(int x, int y, int step, int side) {
+		if (!CoordValid(x, y)) return;
+		if (field->gameField[x][y] != Brick && !ItemIsAccessible(field->gameField[x][y])) return;
+		int temp = step;
+		temp += field->gameField[x][y] == Brick ? 2 : 1;  //砖块则步数+2 否则+1
+		if (min_step_to_base[side][x][y] > temp || min_step_to_base[side][x][y] < 0) {
+			BFS_generate_queue.push(Coordinate{ x,y });
+			min_step_to_base[side][x][y] = temp;
+		}
+	}
+	//生成到终点的最小步数
+	void genarate_min_step(int side) {
+		while (!BFS_generate_queue.empty()) BFS_generate_queue.pop(); //清空队列
+		memset(min_step_to_base[side], -1, sizeof(min_step_to_base[side])); //全部设为-1，表示还没有找
+		min_step_to_base[side][baseY[side ^ 1]][baseX[side ^ 1]] = 0; //对方基地处是0步
+		BFS_generate_queue.push(Coordinate{ baseY[side ^ 1],baseX[side ^ 1] });
+		int i = 0, j = 0;
+		for (i = baseY[side ^ 1] - 1; i >= 0 && ItemIsAccessible(field->gameField[i][baseX[side ^ 1]]); i--) {
+			min_step_to_base[side][i][baseX[side ^ 1]] = 1; //正上方所有与对方基地间无墙的距离是1
+			BFS_generate_queue.push(Coordinate{ i,baseX[side ^ 1] });
+		}
+		/*
+		if (i >= 0 && field->gameField[i][baseX[side ^ 1]] == Brick) {
+			min_step_to_base[side][i][baseX[side ^ 1]] = 2; //正上方第一个可击碎的墙离终点的距离是2
+			BFS_generate_queue.push(Coordinate{ i,baseX[side ^ 1] });
+		}
+		*/
+		for (i = baseY[side ^ 1] + 1; i < fieldHeight && ItemIsAccessible(field->gameField[i][baseX[side ^ 1]]); i++) {
+			min_step_to_base[side][i][baseX[side ^ 1]] = 1; //正下方所有与对方基地间无墙的距离是1
+			BFS_generate_queue.push(Coordinate{ i,baseX[side ^ 1] });
+		}
+
+		for (j = baseX[side ^ 1] - 1; j >= 0 && ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]); j--) {
+			min_step_to_base[side][baseY[side ^ 1]][j] = 1; //正左方所有与对方基地间无墙的距离是1
+			BFS_generate_queue.push(Coordinate{ baseY[side ^ 1], j });
+		}
+
+		for (j = baseX[side ^ 1] + 1; j < fieldWidth && ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]); j++) {
+			min_step_to_base[side][baseY[side ^ 1]][j] = 1; //正右方所有与对方基地间无墙的距离是1
+			BFS_generate_queue.push(Coordinate{ baseY[side ^ 1], j });
+		}
+		//下面开始BFS
+		while (!BFS_generate_queue.empty()) {
+			int cx = BFS_generate_queue.front().x, cy = BFS_generate_queue.front().y;
+			BFS_generate_queue.pop();
+			push_BFS_queue(cx - 1, cy, min_step_to_base[side][cx][cy], side);
+			push_BFS_queue(cx + 1, cy, min_step_to_base[side][cx][cy], side);
+			push_BFS_queue(cx, cy - 1, min_step_to_base[side][cx][cy], side);
+			push_BFS_queue(cx, cy + 1, min_step_to_base[side][cx][cy], side);
+		}
+		return;
+	}
+	//生成各个位置进入射程的概率数组（目前是傻瓜版）
+	void generate_shot_range(int side) {
+		memset(shot_range[side], 0, sizeof(shot_range[side]));
+		for (int id = 0; id < tankPerSide; id++) {
+			if (!field->tankAlive[side][id]) continue;
+			int tx = field->tankY[side][id], ty = field->tankX[side][id]; //随时注意X Y方向与一般的不一样
+			for (int i = tx - 1; i >= 0 && CanBulletAcross(field->gameField[i][ty]); i--) {
+				AddProbability(shot_range[side][i][ty], 0.4 * (side == 0 ? 0.1 : 1)); //参数0.9可调 side为0是向下进攻，向上发射子弹概率少一些
+			}
+			for (int i = tx + 1; i <fieldHeight && CanBulletAcross(field->gameField[i][ty]); i++) {
+				AddProbability(shot_range[side][i][ty], 0.4 * (side == 1 ? 0.1 : 1)); //以后最好额外定义概率数组，不然每次一大堆数据不好调参
+			}
+			for (int j = ty - 1; j >= 0 && CanBulletAcross(field->gameField[tx][j]); j--) {
+				AddProbability(shot_range[side][tx][j], 0.27);
+			}
+			for (int j = ty + 1; j < fieldWidth && CanBulletAcross(field->gameField[tx][j]); j++) {
+				AddProbability(shot_range[side][tx][j], 0.27);
+			}
+			//概率：前 0.4 左/右 0.27 后0.04
+			//可修改为计算n步之后的概率，以后改 @李辰剑
+		}
+		return;
+	}
+
+	//基于最短路的傻瓜策略
+	int get_stupid_action(int tank_id) {
+		bool force_move_mode = false;
+		int side = field->mySide;
+
+		if (!field->tankAlive[side][tank_id]) return my_action[tank_id] = -1; //坦克已死，没你的事了
+
+		int tx = field->tankY[side][tank_id], ty = field->tankX[side][tank_id]; //当前tank坐标
+		int fx = field->tankY[side][tank_id ^1], fy = field->tankX[side][tank_id^1]; //另一个友方tank坐标
+		if (my_action[tank_id ^ 1] >= 0 && my_action[tank_id ^ 1] <= 3) {
+			fx += next_step[my_action[tank_id ^ 1]][0];
+			fy += next_step[my_action[tank_id ^ 1]][1];
+		}
+
+		if (field->previousActions[field->currentTurn - 1][side][tank_id] > Left) force_move_mode = true; //上一步是射子弹
+
+		//↓一下可射到基地的特判
+		if (min_step_to_base[side][tx][ty] == 1) {
+			if (!force_move_mode) {
+				if (baseX[side ^ 1] == ty) { my_action[tank_id] = side + 4;} //同一竖行，则向前射
+				else { my_action[tank_id] = 4 + (baseX[side ^ 1] < tx ? 3 : 2); } //同一横行，则向基地射
+			}
+			else {
+				int ans = -1;//默认不动
+				double risk = shot_range[side ^ 1][tx][ty]; //选取为1且射中风险最小的位置
+				int gx, gy;
+				for (int dir = 0; dir < 4; dir++) {
+					gx = tx + next_step[dir][0];
+					gy = ty + next_step[dir][1];
+					if (!CoordValid(gx, gy)) continue;
+					if (ItemIsAccessible(field->gameField[gx][gy], true)) {
+						double temp = shot_range[side ^ 1][gx][gy];
+						temp += (min_step_to_base[side][gx][gy] - 0.9)*GetRandom(); //1的风险系数比2小很多
+						if (risk > shot_range[side ^ 1][gx][gy]) {
+							risk = shot_range[side ^ 1][gx][gy];
+							ans = dir;
+						}
+						else if (risk == shot_range[side ^ 1][gx][gy] && GetRandom()<0.5) {
+							ans = dir; //两个风险一致，则有0.5的概率换方向移动
+						}
+					}
+				}
+				my_action[tank_id] = ans;
+			}
+			return my_action[tank_id];
+		}
+
+
+		//0下 1上 2右 3左  权重
+		double act[4] = { -1,-1,-1,-1};
+		for (int i = 0; i < 4; i++) {
+			int gx = tx + next_step[i][0], gy = ty + next_step[i][1];
+			if (!CoordValid(gx, gy)) continue;
+			if (min_step_to_base[side][tx][ty] >= min_step_to_base[side][gx][gy] - 1 && min_step_to_base[side][gx][gy]>=0) {
+				act[i] = min_step_to_base[side][tx][ty] - min_step_to_base[side][gx][gy] + 0.3;
+				if (field->gameField[gx][gy] == Brick && force_move_mode) act[i] = -1.8;
+			}
+			act[i] += 0.8;
+		}
+		//↑先把合法的弄成非负
+
+		//概率随机，若当前位置在射程内会强制进入move模式
+		if (GetRandom() <= shot_range[side ^ 1][tx][ty] * 0.85) force_move_mode = true;
+		else if (!force_move_mode && GetRandom() <= 0.3) {
+			int ans = -1;
+			// 不要怂 直接刚 看看是哪个方向
+			for (int dir = 0; dir < 4; dir++) {
+				for (int ii = tx, jj = ty; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
+					if (fx == ii && fy == jj)break; //停火，友军！
+					if (IsTank(field->gameField[ii][jj]) && GetTankSide(field->gameField[ii][jj]) != side) {ans = dir; break;} //敌军，上！
+				}
+				if (ans >= 0) break;
+			}
+			if (ans >= 0) { my_action[tank_id] = ans + 4; return my_action[tank_id]; }
+		}
+		double shot_weight[4] = { 0,0,0,0 }; //shoot与move的权重
+		bool skip_loop;
+		if (!force_move_mode) {
+			//分配权重 这个方向是射还是走
+			for (int dir = 0; dir < 4; dir++) {
+				skip_loop = false;
+				int ii = tx, jj = ty, cnt = 0;
+				for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
+					if (fx == ii || fy == jj) {
+						skip_loop = true;
+						break;
+					}
+					cnt++;
+				}
+				if (skip_loop || !CoordValid(ii, jj)) continue; //停火，友军！
+				if (field->gameField[ii][jj] == Brick) {
+					//此时射击才有意义
+					shot_weight[dir] += 0.6;
+					shot_weight[dir] += shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] * 0.8;
+					if (cnt + min_step_to_base[side][ii][jj] > min_step_to_base[side][tx][ty]) {
+						//被射的点不在最短路上
+						shot_weight[dir] /= 1.5 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
+					}
+				}
+				//注意：没考虑射出后对位
+				
+				if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.92; //己方半场射击概率更低 
+				while (--cnt) shot_weight[dir] *= 0.87; //墙每远一格 概率减小一定倍数
+			}
+			shot_weight[side] *= 1.2; //前
+			shot_weight[side ^ 1] *= 0.8; //后
+		}
+		//act[dir]<0不考虑 shot_weight==0不考虑
+		for (int dir = 0; dir < 4; dir++) {
+			if (GetRandom() < shot_weight[dir] || !ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false))
+				act[dir] = shot_weight[dir], shot_weight[dir] = 2;//=2(>1)作为标记供以后判断是移还是射
+			if (min_step_to_base[side][tx + next_step[dir][0]] [ty + next_step[dir][1]] > min_step_to_base[side][tx][ty]) {
+				act[dir] /= 2 + GetRandom() * 2;
+			}
+			if (act[dir] < 0) act[dir] = 0;
+		}
+		double sum = 0;
+		//归一化&前缀和
+		for (int i = 0; i < 4; i++)sum += act[i];
+		for (int i = 0; i < 4; i++) { 
+			act[i] /= sum;
+			if (i > 0) act[i] += act[i - 1];
+		}
+		sum = GetRandom();
+		int ans = -1;
+		for (ans = 0; act[ans] < sum; ans++);
+		my_action[tank_id] = ans;
+		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4;
+		return my_action[tank_id];
+
+	}
+	void Debug_Print_MinStep() {
+#ifndef _BOTZONE_ONLINE
+		for (int side = 0; side < 2; side++) {
+			cout << "###side = " << side << "###\n";
+			for (int i = 0; i < fieldHeight; i++) {
+				for (int j = 0; j < fieldWidth; j++) {
+					cout << std::setw(2) <<min_step_to_base[side][i][j] <<' ';
+				}
+				cout << endl;
+			}
+			cout << endl;
+		}
+		cout << "===========Shoot Range===========\n";
+		for (int side = 0; side < 2; side++) {
+			cout << "###side = " << side << "###\n";
+			for (int i = 0; i < fieldHeight; i++) {
+				for (int j = 0; j < fieldWidth; j++) {
+					cout << std::setprecision(3) << shot_range[side][i][j] << ' ';
+				}
+				cout << endl;
+			}
+			cout << endl;
+		}
+#endif
+	}
+
 #ifdef _MSC_VER
 #pragma endregion
 #endif
@@ -725,7 +1025,6 @@ TankGame::Action RandAction(int tank)
 }
 
 
-
 int main()
 {
 	srand((unsigned)time(nullptr));
@@ -733,5 +1032,27 @@ int main()
 	string data, globaldata;
 	TankGame::ReadInput(cin, data, globaldata);
 	TankGame::field->DebugPrint();
-	TankGame::SubmitAndExit(RandAction(0), RandAction(1));
+	TankGame::genarate_min_step(0);
+	TankGame::genarate_min_step(1);
+	TankGame::generate_shot_range(0);
+	TankGame::generate_shot_range(1);
+	TankGame::Debug_Print_MinStep();
+
+	TankGame::get_stupid_action(0);
+	TankGame::get_stupid_action(1);
+	TankGame::Action act0 = TankGame::Get_My_Action(TankGame::my_action[0] % 4, TankGame::my_action[0] >= 4);
+	TankGame::Action act1 = TankGame::Get_My_Action(TankGame::my_action[1] % 4, TankGame::my_action[1] >= 4);
+	int side = TankGame::field->mySide;
+
+	//防错处理，若生成的策略无效则：
+	if (!TankGame::field->ActionIsValid(side, 0, act0)) {
+		act0 = RandAction(0);
+		if (TankGame::GetRandom() < 0.65) act0 = TankGame::Stay;
+	}
+	if (!TankGame::field->ActionIsValid(side, 1, act1)) {
+		act1 = RandAction(1);
+		if (TankGame::GetRandom() < 0.65) act1 = TankGame::Stay;
+	}
+
+	TankGame::SubmitAndExit(act0, act1);
 }
