@@ -1,0 +1,531 @@
+[
+	{
+		"keep_running": false,
+		"memory": 179,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": {
+					"brickfield": [
+						80705064,
+						13325976,
+						10712985
+					],
+					"mySide": 0,
+					"steelfield": [
+						17825792,
+						35694626,
+						68
+					],
+					"waterfield": [
+						33554432,
+						16777220,
+						2
+					]
+				},
+				"1": {
+					"brickfield": [
+						80705064,
+						13325976,
+						10712985
+					],
+					"mySide": 1,
+					"steelfield": [
+						17825792,
+						35694626,
+						68
+					],
+					"waterfield": [
+						33554432,
+						16777220,
+						2
+					]
+				}
+			},
+			"display": {
+				"brick": [
+					80705064,
+					13325976,
+					10712985
+				],
+				"steel": [
+					17825792,
+					35694626,
+					68
+				],
+				"water": [
+					33554432,
+					16777220,
+					2
+				]
+			}
+		},
+		"time": 4,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 3,
+			"verdict": "OK",
+			"response": [
+				3,
+				1
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 275,
+			"time": 954,
+			"verdict": "OK",
+			"debug": "debug: 23935 24869.6 time 950010 start 94649 pool 115065 115065 23935 eval 19617\n",
+			"response": [
+				1,
+				0
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 179,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					1,
+					0
+				],
+				"1": [
+					3,
+					1
+				]
+			},
+			"display": {
+				"0": [
+					3,
+					1
+				],
+				"1": [
+					1,
+					0
+				]
+			}
+		},
+		"time": 4,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 3,
+			"verdict": "OK",
+			"response": [
+				6,
+				1
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 275,
+			"time": 954,
+			"verdict": "OK",
+			"debug": "debug: 25984 26874.5 time 950038 start 75947 pool 137338 137338 25984 eval 20581\n",
+			"response": [
+				5,
+				7
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 179,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					5,
+					7
+				],
+				"1": [
+					6,
+					1
+				]
+			},
+			"display": {
+				"0": [
+					6,
+					1
+				],
+				"1": [
+					5,
+					7
+				]
+			}
+		},
+		"time": 4,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 5,
+			"verdict": "OK",
+			"response": [
+				3,
+				6
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 276,
+			"time": 954,
+			"verdict": "OK",
+			"debug": "debug: 29733 28738.1 time 950012 start 86374 pool 166000 166000 29733 eval 25072\n",
+			"response": [
+				1,
+				3
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 179,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					1,
+					3
+				],
+				"1": [
+					3,
+					6
+				]
+			},
+			"display": {
+				"0": [
+					3,
+					6
+				],
+				"1": [
+					1,
+					3
+				]
+			}
+		},
+		"time": 2,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 2,
+			"verdict": "OK",
+			"response": [
+				6,
+				2
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 276,
+			"time": 954,
+			"verdict": "OK",
+			"debug": "debug: 29454 28830.4 time 950012 start 80234 pool 201634 201634 29454 eval 25348\n",
+			"response": [
+				4,
+				7
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 179,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					4,
+					7
+				],
+				"1": [
+					6,
+					2
+				]
+			},
+			"display": {
+				"0": [
+					6,
+					2
+				],
+				"1": [
+					4,
+					7
+				]
+			}
+		},
+		"time": 3,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 2,
+			"verdict": "OK",
+			"response": [
+				2,
+				6
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 276,
+			"time": 954,
+			"verdict": "OK",
+			"debug": "debug: 27801 26876.5 time 950036 start 75934 pool 176822 176822 27801 eval 26068\n",
+			"response": [
+				0,
+				3
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 179,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					0,
+					3
+				],
+				"1": [
+					2,
+					6
+				]
+			},
+			"display": {
+				"0": [
+					2,
+					6
+				],
+				"1": [
+					0,
+					3
+				]
+			}
+		},
+		"time": 4,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 2,
+			"verdict": "OK",
+			"response": [
+				6,
+				2
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 276,
+			"time": 955,
+			"verdict": "OK",
+			"debug": "debug: 26200 26424.2 time 950061 start 85384 pool 204656 204656 26200 eval 25177\n",
+			"response": [
+				4,
+				4
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 180,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					4,
+					4
+				],
+				"1": [
+					6,
+					2
+				]
+			},
+			"display": {
+				"0": [
+					6,
+					2
+				],
+				"1": [
+					4,
+					4
+				]
+			}
+		},
+		"time": 5,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 4,
+			"verdict": "OK",
+			"response": [
+				2,
+				6
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 276,
+			"time": 954,
+			"verdict": "OK",
+			"debug": "debug: 27192 28089.1 time 950014 start 79321 pool 154788 154788 27192 eval 26261\n",
+			"response": [
+				0,
+				0
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 180,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					0,
+					0
+				],
+				"1": [
+					2,
+					6
+				]
+			},
+			"display": {
+				"0": [
+					2,
+					6
+				],
+				"1": [
+					0,
+					0
+				]
+			}
+		},
+		"time": 6,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 4,
+			"verdict": "OK",
+			"response": [
+				6,
+				2
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 275,
+			"time": 954,
+			"verdict": "OK",
+			"debug": "debug: 26582 42574.5 time 950016 start 86107 pool 127032 127032 26582 eval 22830\n",
+			"response": [
+				4,
+				0
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 180,
+		"output": {
+			"command": "request",
+			"content": {
+				"0": [
+					4,
+					0
+				],
+				"1": [
+					6,
+					2
+				]
+			},
+			"display": {
+				"0": [
+					6,
+					2
+				],
+				"1": [
+					4,
+					0
+				]
+			}
+		},
+		"time": 5,
+		"verdict": "OK"
+	},
+	{
+		"0": {
+			"keep_running": false,
+			"memory": 179,
+			"time": 2,
+			"verdict": "OK",
+			"response": [
+				2,
+				-1
+			]
+		},
+		"1": {
+			"keep_running": false,
+			"memory": 276,
+			"time": 955,
+			"verdict": "OK",
+			"debug": "debug: 53255 102227.7 time 950020 start 80615 pool 202125 202125 53255 eval 7827\n",
+			"response": [
+				-1,
+				4
+			]
+		}
+	},
+	{
+		"keep_running": false,
+		"memory": 180,
+		"output": {
+			"command": "finish",
+			"content": {
+				"0": 0,
+				"1": 2
+			},
+			"display": {
+				"0": [
+					2,
+					-1
+				],
+				"1": [
+					-1,
+					4
+				],
+				"loseReason": [
+					"TANK_ALL_DESTROYED"
+				]
+			}
+		},
+		"time": 3,
+		"verdict": "OK"
+	}
+]
