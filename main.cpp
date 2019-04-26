@@ -960,7 +960,7 @@ namespace TankGame
 		//act[dir]<0不考虑 shot_weight==0不考虑
 		for (int dir = 0; dir < 4; dir++) {
 			if (GetRandom() < shot_weight[dir] || !ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false))
-				act[dir] = act[dir] / 2+ shot_weight[dir], shot_weight[dir] = 2;//=2(>1)作为标记供以后判断是移还是射(别中了射击)
+				act[dir] = (1.2 * act[dir]) * shot_weight[dir], shot_weight[dir] = 2;//=2(>1)作为标记供以后判断是移还是射(别中了射击)
 			else if(ActionIsMove(field->previousActions[field->currentTurn - 1][side][tank_id])
 				&& ActionDirectionIsOpposite(field->previousActions[field->currentTurn - 1][side][tank_id], Get_My_Action(dir, false))) {
 				//若是移动回上一步
