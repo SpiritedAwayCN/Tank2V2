@@ -758,6 +758,7 @@ namespace TankGame
 
 	inline Action Get_My_Action(int my_dir, bool shoot) {
 		//mydir 0123->下上右左  官方 0123->上右下左
+		if (my_dir < 0) return Action(my_dir);
 		int number = (my_dir == 3 ? 3 : (my_dir + 2) % 3);
 		if (shoot) number += 4;
 		return Action(number);
@@ -868,7 +869,7 @@ namespace TankGame
 		if (min_step_to_base[side][tx][ty] == 1) {
 			if (!force_move_mode) {
 				if (baseX[side ^ 1] == ty) { my_action[tank_id] = side + 4;} //同一竖行，则向前射
-				else { my_action[tank_id] = 4 + (baseX[side ^ 1] < tx ? 3 : 2); } //同一横行，则向基地射
+				else { my_action[tank_id] = 4 + (baseX[side ^ 1] < ty ? 3 : 2); } //同一横行，则向基地射
 			}
 			else {
 				int ans = -1;//默认不动
@@ -885,7 +886,7 @@ namespace TankGame
 							risk = shot_range[side ^ 1][gx][gy];
 							ans = dir;
 						}
-						else if (risk == shot_range[side ^ 1][gx][gy] && GetRandom()<0.5) {
+						else if (risk == temp && GetRandom()<0.5) {
 							ans = dir; //两个风险一致，则有0.5的概率换方向移动
 						}
 					}
@@ -910,8 +911,8 @@ namespace TankGame
 		//↑先把合法的弄成非负
 
 		//概率随机，若当前位置在射程内会强制进入move模式
-		if (GetRandom() <= shot_range[side ^ 1][tx][ty] * 0.85) force_move_mode = true;
-		else if (!force_move_mode && GetRandom() <= 0.3) {
+		if (GetRandom() <= shot_range[side ^ 1][tx][ty] * 0.7) force_move_mode = true;
+		else if (!force_move_mode && GetRandom() <= 0.6) {
 			int ans = -1;
 			// 不要怂 直接刚 看看是哪个方向
 			for (int dir = 0; dir < 4; dir++) {
@@ -929,9 +930,9 @@ namespace TankGame
 			//分配权重 这个方向是射还是走
 			for (int dir = 0; dir < 4; dir++) {
 				skip_loop = false;
-				int ii = tx, jj = ty, cnt = 0;
+				int ii = tx + next_step[dir][0], jj = ty + next_step[dir][1], cnt = 0;
 				for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
-					if (fx == ii || fy == jj) {
+					if (fx == ii && fy == jj) {
 						skip_loop = true;
 						break;
 					}
@@ -944,13 +945,14 @@ namespace TankGame
 					shot_weight[dir] += shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] * 0.8;
 					if (cnt + min_step_to_base[side][ii][jj] > min_step_to_base[side][tx][ty]) {
 						//被射的点不在最短路上
-						shot_weight[dir] /= 1.5 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
+						shot_weight[dir] /= 2 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
 					}
 				}
 				//注意：没考虑射出后对位
 				
 				if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.92; //己方半场射击概率更低 
-				while (--cnt) shot_weight[dir] *= 0.87; //墙每远一格 概率减小一定倍数
+				else shot_weight[dir] *= 1.08; //对方半场的射率更高
+				while (--cnt > 0) shot_weight[dir] *= 0.87; //墙每远一格 概率减小一定倍数
 			}
 			shot_weight[side] *= 1.2; //前
 			shot_weight[side ^ 1] *= 0.8; //后
@@ -958,7 +960,12 @@ namespace TankGame
 		//act[dir]<0不考虑 shot_weight==0不考虑
 		for (int dir = 0; dir < 4; dir++) {
 			if (GetRandom() < shot_weight[dir] || !ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false))
-				act[dir] = shot_weight[dir], shot_weight[dir] = 2;//=2(>1)作为标记供以后判断是移还是射
+				act[dir] = act[dir] / 2+ shot_weight[dir], shot_weight[dir] = 2;//=2(>1)作为标记供以后判断是移还是射(别中了射击)
+			else if(ActionIsMove(field->previousActions[field->currentTurn - 1][side][tank_id])
+				&& ActionDirectionIsOpposite(field->previousActions[field->currentTurn - 1][side][tank_id], Get_My_Action(dir, false))) {
+				//若是移动回上一步
+				act[dir] /= 5 + GetRandom() * 4;
+			}
 			if (min_step_to_base[side][tx + next_step[dir][0]] [ty + next_step[dir][1]] > min_step_to_base[side][tx][ty]) {
 				act[dir] /= 2 + GetRandom() * 2;
 			}
@@ -975,7 +982,7 @@ namespace TankGame
 		int ans = -1;
 		for (ans = 0; act[ans] < sum; ans++);
 		my_action[tank_id] = ans;
-		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4;
+		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是设计，则方案+4
 		return my_action[tank_id];
 
 	}
