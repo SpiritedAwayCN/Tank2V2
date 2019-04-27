@@ -1029,16 +1029,17 @@ namespace TankGame
 					//以下：本次射击后，不能在射击方向（与反方向）上进入对方射程
 					ii += next_step[dir][0], jj += next_step[dir][1];
 					int uc, dc;
-					for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]);
+					for (; CoordValid(ii, jj) && ItemIsAccessible(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]);
 					uc = next_step[dir][0] ? ii : jj;
 					ii = tx; jj = ty;
-					for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir ^ 1][0], jj += next_step[dir ^ 1][1]);
+					for (; CoordValid(ii, jj) && ItemIsAccessible(field->gameField[ii][jj]); ii += next_step[dir ^ 1][0], jj += next_step[dir ^ 1][1]);
 					dc = next_step[dir ^ 1][0] ? ii : jj;
 					if (uc > dc) std::swap(uc, dc);
 					//uc dc: 该方向上，可以射到tank的坐标范围
 					for (uc++, dc--; uc <= dc; uc++) {
 						for (int bias = -1; bias <= 1; bias++) {
 							if (dir < 2) {//上下
+								if (tx == uc && bias) continue;
 								if (CoordValid(uc, ty + bias) && IsTank(field->gameField[uc][ty + bias]) && GetTankSide(field->gameField[uc][ty + bias]) != side) {
 									shot_weight[dir] *= min_step_to_base[side ^ 1][uc][ty + bias] >= min_step_to_base[side ^ 1][uc][ty] ? 0 : 0.9;
 									int tid = GetTankID(field->gameField[uc][ty + bias]);
@@ -1052,6 +1053,7 @@ namespace TankGame
 								}
 							}
 							else {//左右
+								if (ty == uc && bias)continue;
 								if (CoordValid(tx+bias,uc) && IsTank(field->gameField[tx+bias][uc]) && GetTankSide(field->gameField[tx+bias][uc]) != side) {
 									shot_weight[dir] *= min_step_to_base[side ^ 1][tx + bias][uc] >= min_step_to_base[side ^ 1][tx][uc] ? 0 : 0.9;
 									int tid = GetTankID(field->gameField[tx + bias][uc]);
