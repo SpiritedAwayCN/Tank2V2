@@ -11,6 +11,7 @@
 #include <cstring>
 #include <queue>
 #include <iomanip>
+#include <algorithm>
 #ifdef _BOTZONE_ONLINE
 #include "jsoncpp/json.h"
 #else
@@ -778,6 +779,7 @@ namespace TankGame
 		if (field->gameField[x][y] != Brick && !ItemIsAccessible(field->gameField[x][y])) return;
 		int temp = step;
 		temp += field->gameField[x][y] == Brick ? 2 : 1;  //砖块则步数+2 否则+1
+		if (abs(x - baseY[side]) + abs(y - baseX[side]) <= 2 && field->gameField[x][y] == Brick) temp += 1;
 		if (min_step_to_base[side][x][y] > temp || min_step_to_base[side][x][y] < 0) {
 			BFS_generate_queue.push(Coordinate{ x,y });
 			min_step_to_base[side][x][y] = temp;
@@ -826,23 +828,28 @@ namespace TankGame
 		return;
 	}
 	//生成各个位置进入射程的概率数组（目前是傻瓜版）
-	void generate_shot_range(int side) {
+	void generate_shot_range(int side , bool IgnoreFeasible = true) {
 		memset(shot_range[side], 0, sizeof(shot_range[side]));
 		for (int id = 0; id < tankPerSide; id++) {
 			if (!field->tankAlive[side][id]) continue;
-			int tx = field->tankY[side][id], ty = field->tankX[side][id]; //随时注意X Y方向与一般的不一样
-			for (int i = tx - 1; i >= 0 && CanBulletAcross(field->gameField[i][ty]); i--) {
+			if (!IgnoreFeasible && field->previousActions[field->currentTurn - 1][side][id] > Left) continue;
+			int tx = field->tankY[side][id], ty = field->tankX[side][id], i, j; //随时注意X Y方向与一般的不一样
+			for (i = tx - 1; i >= 0 && CanBulletAcross(field->gameField[i][ty]); i--) {
 				AddProbability(shot_range[side][i][ty], 0.4 * (side == 0 ? 0.1 : 1)); //参数0.9可调 side为0是向下进攻，向上发射子弹概率少一些
 			}
-			for (int i = tx + 1; i <fieldHeight && CanBulletAcross(field->gameField[i][ty]); i++) {
+			if (i >= 0)AddProbability(shot_range[side][i][ty], 0.4 * (side == 0 ? 0.1 : 1));
+			for (i = tx + 1; i <fieldHeight && CanBulletAcross(field->gameField[i][ty]); i++) {
 				AddProbability(shot_range[side][i][ty], 0.4 * (side == 1 ? 0.1 : 1)); //以后最好额外定义概率数组，不然每次一大堆数据不好调参
 			}
-			for (int j = ty - 1; j >= 0 && CanBulletAcross(field->gameField[tx][j]); j--) {
+			if (i < fieldHeight) AddProbability(shot_range[side][i][ty], 0.4 * (side == 1 ? 0.1 : 1));
+			for (j = ty - 1; j >= 0 && CanBulletAcross(field->gameField[tx][j]); j--) {
 				AddProbability(shot_range[side][tx][j], 0.27);
 			}
-			for (int j = ty + 1; j < fieldWidth && CanBulletAcross(field->gameField[tx][j]); j++) {
+			if (j >= 0 ) AddProbability(shot_range[side][tx][j], 0.27);
+			for (j = ty + 1; j < fieldWidth && CanBulletAcross(field->gameField[tx][j]); j++) {
 				AddProbability(shot_range[side][tx][j], 0.27);
 			}
+			if (j < fieldHeight)AddProbability(shot_range[side][tx][j], 0.27);
 			//概率：前 0.4 左/右 0.27 后0.04
 			//可修改为计算n步之后的概率，以后改 @李辰剑
 		}
@@ -910,6 +917,72 @@ namespace TankGame
 		}
 		//↑先把合法的弄成非负
 
+		if (shot_range[side ^ 1][tx][ty] > 0) {
+			int ans = -1, tid = -1, etx = 0, ety = 0;
+			// 不要怂 直接刚 看看是哪个方向
+			for (int dir = 0; dir < 4; dir++) {
+				for (int ii = tx, jj = ty; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
+					if (fx == ii && fy == jj)break; //停火，友军！
+					if (IsTank(field->gameField[ii][jj]) && GetTankSide(field->gameField[ii][jj]) != side) {
+						tid = GetTankID(field->gameField[ii][jj]);
+						ans = dir; etx = ii; ety = jj;
+						break;
+					} //敌军，上！
+				}
+				if (ans >= 0 && !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)) break;
+				//若这个tank上回合发射了子弹，先存着，看看有没有其他
+			}
+			if (ans >= 0 && !force_move_mode){
+				if (min_step_to_base[side][tx][ty] < min_step_to_base[side ^ 1][etx][ety]) {
+					if (!(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)) {
+						//我方更近，尽可能不参与对峙（若这个tank上回合发过子弹则忽略tank对峙，不进入此if）
+						double mrisk = 10;
+						int ans2 = -1, mdis = 100;
+						for (int dir = 0; dir < 4; dir++) {
+							if (mrisk > shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
+								ans2 = dir; mrisk = shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]];
+								mdis = min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]];
+							}
+							else if (mrisk == shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
+								if (mdis > min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]]
+									&& ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]],false)) {
+									ans2 = dir; mdis = min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]];
+								}
+							}
+						}
+						if (mrisk > 0 || min_step_to_base[side ^ 1][etx][ety]) { my_action[tank_id] = ans + 4; return my_action[tank_id];} //保命第一位，干
+						else { my_action[tank_id] = ans2; return my_action[tank_id];} //朝0风险中 最低的走
+					}
+					else if(min_step_to_base[side][tx][ty]>=min_step_to_base[side][etx][ety]){ //对方tank离对方基地更近
+						my_action[tank_id] = ans + 4; return my_action[tank_id]; //干他
+					}
+				}else{
+					//对方更近，直接上
+					my_action[tank_id] = ans + 4; return my_action[tank_id];
+				}
+			}
+			else if (ans >= 0 && force_move_mode && !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)
+				&& GetRandom() < 0.7) {
+				double mrisk = 10;
+				int ans2 = -1, mdis = 100;
+				for (int dir = 0; dir < 4; dir++) {
+					if (mrisk > shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
+						ans2 = dir; mrisk = shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]];
+						mdis = min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]];
+					}
+					else if (mrisk == shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
+						if (mdis > min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]]
+							&& ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) {
+							ans2 = dir; mdis = min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]];
+						}
+					}
+				}
+				my_action[tank_id] = ans2; return my_action[tank_id];
+			}
+			
+		}
+
+		/*
 		//概率随机，若当前位置在射程内会强制进入move模式
 		if (GetRandom() <= shot_range[side ^ 1][tx][ty] * 0.7) force_move_mode = true;
 		else if (!force_move_mode && GetRandom() <= 0.6) {
@@ -924,6 +997,7 @@ namespace TankGame
 			}
 			if (ans >= 0) { my_action[tank_id] = ans + 4; return my_action[tank_id]; }
 		}
+		*/
 		double shot_weight[4] = { 0,0,0,0 }; //shoot与move的权重
 		bool skip_loop;
 		if (!force_move_mode) {
@@ -931,6 +1005,8 @@ namespace TankGame
 			for (int dir = 0; dir < 4; dir++) {
 				skip_loop = false;
 				int ii = tx + next_step[dir][0], jj = ty + next_step[dir][1], cnt = 0;
+				//注：后续版本要添加-->预判对方tank走位
+
 				for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
 					if (fx == ii && fy == jj) {
 						skip_loop = true;
@@ -938,20 +1014,61 @@ namespace TankGame
 					}
 					cnt++;
 				}
-				if (skip_loop || !CoordValid(ii, jj)) continue; //停火，友军！
+				if (skip_loop || !CoordValid(ii, jj)) continue; //停火，友军！（但似乎依然会误伤友军）
 				if (field->gameField[ii][jj] == Brick) {
 					//此时射击才有意义
 					shot_weight[dir] += 0.6;
-					shot_weight[dir] += shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] * 0.8;
+					shot_weight[dir] += shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] * (cnt > 1 ? 0.8 : -0.4);
 					if (cnt + min_step_to_base[side][ii][jj] > min_step_to_base[side][tx][ty]) {
-						//被射的点不在最短路上
-						shot_weight[dir] /= 2 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
+						//被射的点不在最短路上（目前这个方法有问题,要修改）
+						shot_weight[dir] /= 4 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
+					}
+					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.92; //己方半场射击概率更低 
+					else shot_weight[dir] *= 1.08; //对方半场的射率更高
+					int wi = ii, wj = jj;
+					//以下：本次射击后，不能在射击方向（与反方向）上进入对方射程
+					ii += next_step[dir][0], jj += next_step[dir][1];
+					int uc, dc;
+					for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]);
+					uc = next_step[dir][0] ? ii : jj;
+					ii = tx; jj = ty;
+					for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir ^ 1][0], jj += next_step[dir ^ 1][1]);
+					dc = next_step[dir ^ 1][0] ? ii : jj;
+					if (uc > dc) std::swap(uc, dc);
+					//uc dc: 该方向上，可以射到tank的坐标范围
+					for (uc++, dc--; uc <= dc; uc++) {
+						for (int bias = -1; bias <= 1; bias++) {
+							if (dir < 2) {//上下
+								if (CoordValid(uc, ty + bias) && IsTank(field->gameField[uc][ty + bias]) && GetTankSide(field->gameField[uc][ty + bias]) != side) {
+									shot_weight[dir] *= min_step_to_base[side ^ 1][uc][ty + bias] >= min_step_to_base[side ^ 1][uc][ty] ? 0 : 0.9;
+									int tid = GetTankID(field->gameField[uc][ty + bias]);
+									if (min_step_to_base[side ^ 1][wi][wj]<min_step_to_base[side^1][uc][ty+bias]
+										&& !(field->previousActions[field->currentTurn - 1][side^1][tid] > Left) && cnt == 0
+										&& min_step_to_base[side][tx][ty]>= min_step_to_base[side ^ 1][uc][ty + bias] && bias==0) {
+										//预判 守株待兔 准备反杀（目前不完善）
+										return my_action[tank_id] = -1;
+									}
+									break;
+								}
+							}
+							else {//左右
+								if (CoordValid(tx+bias,uc) && IsTank(field->gameField[tx+bias][uc]) && GetTankSide(field->gameField[tx+bias][uc]) != side) {
+									shot_weight[dir] *= min_step_to_base[side ^ 1][tx + bias][uc] >= min_step_to_base[side ^ 1][tx][uc] ? 0 : 0.9;
+									int tid = GetTankID(field->gameField[tx + bias][uc]);
+									if (min_step_to_base[side ^ 1][wi][wj]<min_step_to_base[side ^ 1][tx + bias][uc]
+										&& !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left) && cnt==0
+										&& min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][tx + bias][uc] && bias == 0) {
+										// 预判 守株待兔 准备反杀（目前不完善）
+										return my_action[tank_id] = -1;
+									}
+									break;
+								}
+							}
+						}
+						if (shot_weight[dir] == 0) break;
 					}
 				}
 				//注意：没考虑射出后对位
-				
-				if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.92; //己方半场射击概率更低 
-				else shot_weight[dir] *= 1.08; //对方半场的射率更高
 				while (--cnt > 0) shot_weight[dir] *= 0.87; //墙每远一格 概率减小一定倍数
 			}
 			shot_weight[side] *= 1.2; //前
@@ -971,10 +1088,21 @@ namespace TankGame
 			}
 			if (act[dir] < 0) act[dir] = 0;
 		}
-		double sum = 0;
+		double sum = 0, max_p = 0;
 		//归一化&前缀和
 		for (int i = 0; i < 4; i++)sum += act[i];
+		if (sum == 0) return my_action[tank_id] = -1;
 		for (int i = 0; i < 4; i++) { 
+			act[i] /= sum;
+			if (max_p < act[i]) max_p = act[i]; //获取最大概率
+		}
+		sum = 0;
+		for (int i = 0; i < 4; i++) {
+			if (act[i] * 1.2 < max_p) act[i] = 0; //*1.2后还是<最大概率的策略直接忽略
+			else sum += act[i];
+		}
+
+		for (int i = 0; i < 4; i++) {
 			act[i] /= sum;
 			if (i > 0) act[i] += act[i - 1];
 		}
@@ -982,7 +1110,12 @@ namespace TankGame
 		int ans = -1;
 		for (ans = 0; act[ans] < sum; ans++);
 		my_action[tank_id] = ans;
+
+		generate_shot_range(side ^ 1, false);
 		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是设计，则方案+4
+		else if (min_step_to_base[side][tx][ty] < min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
+			&& shot_range[side ^ 1][tx][ty] < shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] + 0.1 + 0.1 * GetRandom())
+			my_action[tank_id] = -1; //不在射程内且行动后最短路变大，则改为stay
 		return my_action[tank_id];
 
 	}
@@ -1050,6 +1183,7 @@ int main()
 	TankGame::Action act0 = TankGame::Get_My_Action(TankGame::my_action[0] % 4, TankGame::my_action[0] >= 4);
 	TankGame::Action act1 = TankGame::Get_My_Action(TankGame::my_action[1] % 4, TankGame::my_action[1] >= 4);
 	int side = TankGame::field->mySide;
+	//任务：历史位置记录 坦克对峙模式
 
 	//防错处理，若生成的策略无效则：
 	if (!TankGame::field->ActionIsValid(side, 0, act0)) {
