@@ -1181,6 +1181,8 @@ int main()
 	TankGame::Debug_Print_MinStep();
 
 	TankGame::get_stupid_action(0);
+	TankGame::generate_shot_range(0);
+	TankGame::generate_shot_range(1);
 	TankGame::get_stupid_action(1);
 	TankGame::Action act0 = TankGame::Get_My_Action(TankGame::my_action[0] % 4, TankGame::my_action[0] >= 4);
 	TankGame::Action act1 = TankGame::Get_My_Action(TankGame::my_action[1] % 4, TankGame::my_action[1] >= 4);
