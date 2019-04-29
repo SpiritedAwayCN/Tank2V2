@@ -1058,11 +1058,11 @@ namespace TankGame
 					tc.Rev(field->previousActions[field->currentTurn - 2][side][tank_id]);
 					if (force_move_mode && etc!=tc) {
 						return my_action[tank_id] = shot_side;
-					}
+					}/*
 					else if (field->previousActions[field->currentTurn - 1][side ^ 1][tid] == Stay && field->previousActions[field->currentTurn - 2][side ^ 1][tid] == Stay) {
 						shot_side = IsUniqueDir(side, tx, ty);
 						return my_action[tank_id] = shot_side;
-					}
+					}*/
 					else if(etc!=tc){
 						my_action[tank_id] = shot_side + 4;
 						if (!shoot_friend(side, tank_id, fx, fy))
@@ -1164,6 +1164,7 @@ namespace TankGame
 		int shot_dir;
 		if(!force_move_mode) //预判走位+开炮
 			for (int i = 0; i < tankPerSide; i++) {
+				if (tx == field->tankY[side ^ 1][i] && ty == field->tankX[side ^ 1][i]) continue;
 				shot_dir = IsUniqueDir(side ^ 1, field->tankY[side ^ 1][i], field->tankX[side ^ 1][i]);
 				if (shot_dir >= 0 && InShootRange(tx, ty, field->tankY[side ^ 1][i] + next_step[shot_dir][0], field->tankX[side ^ 1][i] + next_step[shot_dir][1])) {
 					if (field->previousActions[field->currentTurn - 1][side ^ 1][i] > Left || GetRandom() <= 0.95) {
@@ -1311,10 +1312,11 @@ namespace TankGame
 				}
 			}
 			if (tid >= 0 && field->tankY[side ^ 1][tid] == tx && field->tankX[side ^ 1][tid] == ty) {
-				for (count = 1; count <= 3; count++) {
+				for (count = 1; count <= field->currentTurn - 1; count++) {
 					if (field->previousActions[field->currentTurn-count][side ^ 1][tid] != Stay) break;
 				}
-				if (count > 5 + int(GetRandom()*20)) return my_action[tank_id];
+				if (count > 5 + int(GetRandom()*20) && min_step_to_base[side][tx][ty]<=min_step_to_base[side^1][tx][ty])
+					return my_action[tank_id];
 			}
 			my_action[tank_id] = -1;
 		}
