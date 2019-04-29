@@ -3,6 +3,7 @@
 // 作者：289371298 upgraded from zhouhy
 // https://www.botzone.org.cn/games/Tank2
 
+
 #include <stack>
 #include <set>
 #include <string>
@@ -748,9 +749,10 @@ namespace TankGame
 	}
 
 	//是否可通过子弹
-	inline bool CanBulletAcross(const FieldItem item, bool IgnoreTank = true) {
+	inline bool CanBulletAcross(const FieldItem item, bool IgnoreTank = true, int IgnoreSide = -1) {
 		if (item == None || item == Water) return true;
-		if (item == Blue0 || item == Red0 || item == Blue1 || item == Red1) return IgnoreTank;
+		if (item == Blue0 || item == Blue1) return IgnoreTank || IgnoreSide == 0;
+		if (item == Red0 || item == Red1) return IgnoreTank || IgnoreSide == 1;
 		return false;
 	}
 
@@ -789,14 +791,14 @@ namespace TankGame
 		return false;
 	}
 
-	inline bool InShootRange(int tx,int ty, int x, int y, bool IgnoreTank = true) {
+	inline bool InShootRange(int tx,int ty, int x, int y, bool IgnoreTank = true, int IgnoreSide = -1) {
 		int l, r;
 		if (tx == x) {
 			l = std::min(ty, y);
 			r = std::max(ty, y);
 			for (int i = l + 1; i < r; i++) {
 				if (!CoordValid(tx, i)) continue;
-				if (!CanBulletAcross(field->gameField[tx][i],IgnoreTank)) return false;
+				if (!CanBulletAcross(field->gameField[tx][i],IgnoreTank, IgnoreSide)) return false;
 			}
 			return true;
 		}
@@ -805,7 +807,7 @@ namespace TankGame
 			r = std::max(tx, x);
 			for (int i = l + 1; i < r; i++) {
 				if (!CoordValid(i, ty)) continue;
-				if (!CanBulletAcross(field->gameField[i][ty], IgnoreTank)) return false;
+				if (!CanBulletAcross(field->gameField[i][ty], IgnoreTank, IgnoreSide)) return false;
 			}
 			return true;
 		}
@@ -987,10 +989,10 @@ namespace TankGame
 	bool avoid_failed = false;
 	//基于最短路的傻瓜策略
 	int get_stupid_action(int tank_id) {
-		my_action[tank_id] = -2;
 		bool force_move_mode = false;
 		int side = field->mySide;
 		if (++cnt > 5) return -2;
+		my_action[tank_id] = -2;
 		if (!field->tankAlive[side][tank_id]) return my_action[tank_id] = -1; //坦克已死，没你的事了
 
 		int tx = field->tankY[side][tank_id], ty = field->tankX[side][tank_id]; //当前tank坐标
@@ -1166,7 +1168,7 @@ namespace TankGame
 			for (int i = 0; i < tankPerSide; i++) {
 				if (tx == field->tankY[side ^ 1][i] && ty == field->tankX[side ^ 1][i]) continue;
 				shot_dir = IsUniqueDir(side ^ 1, field->tankY[side ^ 1][i], field->tankX[side ^ 1][i]);
-				if (shot_dir >= 0 && InShootRange(tx, ty, field->tankY[side ^ 1][i] + next_step[shot_dir][0], field->tankX[side ^ 1][i] + next_step[shot_dir][1])) {
+				if (shot_dir >= 0 && InShootRange(tx, ty, field->tankY[side ^ 1][i] + next_step[shot_dir][0], field->tankX[side ^ 1][i] + next_step[shot_dir][1], false, side^1)) {
 					if (field->previousActions[field->currentTurn - 1][side ^ 1][i] > Left || GetRandom() <= 0.95) {
 						int etx = field->tankY[side ^ 1][i] + next_step[shot_dir][0], ety = field->tankX[side ^ 1][i] + next_step[shot_dir][1];
 						if (etx == tx) shot_dir = ety < ty ? 3 : 2;
