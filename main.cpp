@@ -766,7 +766,8 @@ namespace TankGame
 		return (rand() % 10000)*1.0 / 10000;
 	}
 
-	inline bool IsTank(FieldItem item) {
+	inline bool IsTank(FieldItem item, bool IgnoreMulty = true) {
+		if (!IgnoreMulty && HasMultipleTank(item)) return true;
 		return item >= Blue0 && item < Water;
 	}
 
@@ -824,23 +825,30 @@ namespace TankGame
 		}
 		return ans;
 	}
-
+	//队友坦克则搜索时权重+2
+	inline void Friend_Weight(int side, int x, int y, int* num = NULL) {
+		FieldItem item = field->gameField[x][y];
+		if (!num) num = &min_step_to_base[side][x][y];
+		if (HasMultipleTank(item)) {
+			if (x == field->tankY[side][0] && y == field->tankX[side][0]) *num += 2;
+			if (x == field->tankY[side][1] && y == field->tankX[side][1]) *num += 2; //队友重合则+4
+		}
+		else if (IsTank(item) && GetTankSide(item) == side && field->tankAlive[side][GetTankID(item)])
+			*num += 2;
+	}
 	//入队处理，仅限初始化最小数组时调用
 	inline void push_BFS_queue(int x, int y, int step, int side) {
 		if (!CoordValid(x, y)) return;
 		if (field->gameField[x][y] != Brick && !ItemIsAccessible(field->gameField[x][y])) return;
 		int temp = step;
 		temp += field->gameField[x][y] == Brick ? 2 : 1;  //砖块则步数+2 否则+1
-		if (IsTank(field->gameField[x][y]) && GetTankSide(field->gameField[x][y]) == side && field->tankAlive[side][GetTankID(field->gameField[x][y])])
-			temp += 2; //友军坦克
+		Friend_Weight(side, x, y, &temp);
 		if (abs(x - baseY[side]) + abs(y - baseX[side]) <= 2 && field->gameField[x][y] == Brick) temp += 1;
 		if (min_step_to_base[side][x][y] > temp || min_step_to_base[side][x][y] < 0) {
 			BFS_generate_queue.push(Coordinate{ x,y });
 			min_step_to_base[side][x][y] = temp;
 		}
 	}
-
-
 	//生成到终点的最小步数
 	void genarate_min_step(int side) {
 		while (!BFS_generate_queue.empty()) BFS_generate_queue.pop(); //清空队列
@@ -853,16 +861,14 @@ namespace TankGame
 		for (i = baseY[side ^ 1] - 1; i >= 0 &&(ItemIsAccessible(field->gameField[i][baseX[side ^ 1]])||field->gameField[i][baseX[side ^ 1]] == Brick); i--) {
 			if (field->gameField[i][baseX[side ^ 1]] == Brick) value += 2;
 			min_step_to_base[side][i][baseX[side ^ 1]] = value; //正上方所有与对方基地间无墙的距离是1
-			if (IsTank(field->gameField[i][baseX[side ^ 1]]) && GetTankSide(field->gameField[i][baseX[side ^ 1]]) == side && field->tankAlive[side][GetTankID(field->gameField[i][baseX[side ^ 1]])])
-				min_step_to_base[side][i][baseX[side ^ 1]] += 2; //友军坦克
+			Friend_Weight(side, i, baseX[side ^ 1]);
 			BFS_generate_queue.push(Coordinate{ i,baseX[side ^ 1] });
 		}
 		value = 1;
 		for (i = baseY[side ^ 1] + 1; i < fieldHeight && (ItemIsAccessible(field->gameField[i][baseX[side ^ 1]]) || field->gameField[i][baseX[side ^ 1]] == Brick); i++) {
 			if (field->gameField[i][baseX[side ^ 1]] == Brick) value += 2;
 			min_step_to_base[side][i][baseX[side ^ 1]] = value; //正下方所有与对方基地间无墙的距离是1
-			if (IsTank(field->gameField[i][baseX[side ^ 1]]) && GetTankSide(field->gameField[i][baseX[side ^ 1]]) == side && field->tankAlive[side][GetTankID(field->gameField[i][baseX[side ^ 1]])])
-				min_step_to_base[side][i][baseX[side ^ 1]] += 2; //友军坦克
+			Friend_Weight(side, i, baseX[side ^ 1]);
 			BFS_generate_queue.push(Coordinate{ i,baseX[side ^ 1] });
 		}
 		bool left_half = false, right_half = false;
@@ -891,8 +897,7 @@ namespace TankGame
 				value += 2;
 			}
 			min_step_to_base[side][baseY[side ^ 1]][j] = value; //正左方所有与对方基地间无墙的距离是1
-			if (IsTank(field->gameField[baseY[side ^ 1]][j]) && GetTankSide(field->gameField[baseY[side ^ 1]][j]) == side && field->tankAlive[side][GetTankID(field->gameField[baseY[side ^ 1]][j])])
-				min_step_to_base[side][baseY[side ^ 1]][j] += 2; //友军坦克
+			Friend_Weight(side, baseY[side ^ 1], j);
 			BFS_generate_queue.push(Coordinate{ baseY[side ^ 1], j });
 		}
 		value = 1;
@@ -902,8 +907,7 @@ namespace TankGame
 				value += 2;
 			}
 			min_step_to_base[side][baseY[side ^ 1]][j] = value; //正右方所有与对方基地间无墙的距离是1
-			if (IsTank(field->gameField[baseY[side ^ 1]][j]) && GetTankSide(field->gameField[baseY[side ^ 1]][j]) == side && field->tankAlive[side][GetTankID(field->gameField[baseY[side ^ 1]][j])])
-				min_step_to_base[side][baseY[side ^ 1]][j] += 2; //友军坦克
+			Friend_Weight(side, baseY[side ^ 1], j);
 			BFS_generate_queue.push(Coordinate{ baseY[side ^ 1], j });
 		}
 		//下面开始BFS
@@ -1163,7 +1167,9 @@ namespace TankGame
 						my_action[tank_id] = shot_dir + 4;
 						if (shoot_friend(side, tank_id, fx, fy))
 							get_stupid_action(tank_id ^ 1);
-						return my_action[tank_id];
+						if ((fx != tx || fy != ty) || my_action[tank_id] != my_action[tank_id ^ 1])
+							return my_action[tank_id];
+						my_action[tank_id] = -2;
 					} 
 				}
 			}
@@ -1291,6 +1297,19 @@ namespace TankGame
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] + 0.1 + 0.1 * GetRandom())
 			my_action[tank_id] = -1; //不在射程内且行动后最短路变大，则改为stay
 		else if (shot_dir >= 0&& ans==shot_dir && real_shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] >0.0001) {
+			int tid = -1, count;
+			for (int i = 0; i < tankPerSide; i++) {
+				if (InShootRange(field->tankY[side ^ 1][i], field->tankX[side ^ 1][i], tx + next_step[ans][0], ty + next_step[ans][1])) {
+					if (tid >= 0) break;
+					tid = i;
+				}
+			}
+			if (tid >= 0 && field->tankY[side ^ 1][tid] == tx && field->tankX[side ^ 1][tid] == ty) {
+				for (count = 1; count <= 3; count++) {
+					if (field->previousActions[field->currentTurn-count][side ^ 1][tid] != Stay) break;
+				}
+				if (count > 5 + int(GetRandom()*20)) return my_action[tank_id];
+			}
 			my_action[tank_id] = -1;
 		}
 
