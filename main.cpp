@@ -984,8 +984,10 @@ namespace TankGame
 
 
 	int cnt = 0;
+	bool avoid_failed = false;
 	//基于最短路的傻瓜策略
 	int get_stupid_action(int tank_id) {
+		my_action[tank_id] = -2;
 		bool force_move_mode = false;
 		int side = field->mySide;
 		if (++cnt > 5) return -2;
@@ -1001,7 +1003,7 @@ namespace TankGame
 		if (field->previousActions[field->currentTurn - 1][side][tank_id] > Left) force_move_mode = true; //上一步是射子弹
 
 		//↓一下可射到基地的特判
-		if (min_step_to_base[side][tx][ty] == 1 || tx == baseY[side^1]) {
+		if ((min_step_to_base[side][tx][ty] == 1 || tx == baseY[side^1]) && !avoid_failed) {
 			if (!force_move_mode) {
 				if (baseX[side ^ 1] == ty) { my_action[tank_id] = side + 4;} //同一竖行，则向前射
 				else { my_action[tank_id] = 4 + (baseX[side ^ 1] < ty ? 3 : 2); } //同一横行，则向基地射
@@ -1030,8 +1032,12 @@ namespace TankGame
 					}
 				}
 				my_action[tank_id] = ans;
+				if (ans == -1 && avoid_friend) {
+					avoid_failed = true;
+					get_stupid_action(tank_id ^ 1);
+				}
 			}
-			if (shoot_friend(side, tank_id, fx, fy))
+			if (shoot_friend(side, tank_id, fx, fy) && !avoid_failed)
 				get_stupid_action(tank_id ^ 1);
 			return my_action[tank_id];
 		}
