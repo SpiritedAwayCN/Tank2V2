@@ -1202,7 +1202,7 @@ namespace TankGame
 					shot_weight[dir] += 0.6;
 					shot_weight[dir] += real_shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] * (cnt > 1 ? 0.8 : -0.4);
 					if (shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] > 0 && real_shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] < 0.0001)
-						shot_weight[dir] /= 50;
+						shot_weight[dir] *= 0.85;
 					if (cnt + min_step_to_base[side][ii][jj] > min_step_to_base[side][tx][ty]) {
 						//被射的点不在最短路上（目前这个方法有问题,要修改）
 						shot_weight[dir] /= 4 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
