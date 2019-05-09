@@ -791,6 +791,7 @@ namespace TankGame
 		return false;
 	}
 
+	//判断(x,y)是否在(tx,ty)这个坦克的射程内
 	inline bool InShootRange(int tx,int ty, int x, int y, bool IgnoreTank = true, int IgnoreSide = -1) {
 		int l, r;
 		if (tx == x) {
@@ -1004,6 +1005,9 @@ namespace TankGame
 
 		if (field->previousActions[field->currentTurn - 1][side][tank_id] > Left) force_move_mode = true; //上一步是射子弹
 
+
+
+
 		//↓一下可射到基地的特判
 		if ((min_step_to_base[side][tx][ty] == 1 || tx == baseY[side^1]) && !avoid_failed) {
 			if (!force_move_mode) {
@@ -1043,6 +1047,7 @@ namespace TankGame
 				get_stupid_action(tank_id ^ 1);
 			return my_action[tank_id];
 		}
+
 		if (HasMultipleTank(field->gameField[tx][ty])) {
 			int shot_side = IsUniqueDir(side ^ 1, tx, ty);
 			if (shot_side >= 0 && min_step_to_base[side ^ 1][tx][ty] <= min_step_to_base[side][tx][ty]) {
@@ -1163,6 +1168,7 @@ namespace TankGame
 			}
 			
 		}
+
 		int shot_dir;
 		if(!force_move_mode) //预判走位+开炮
 			for (int i = 0; i < tankPerSide; i++) {
@@ -1173,7 +1179,8 @@ namespace TankGame
 						int etx = field->tankY[side ^ 1][i] + next_step[shot_dir][0], ety = field->tankX[side ^ 1][i] + next_step[shot_dir][1];
 						if (etx == tx) shot_dir = ety < ty ? 3 : 2;
 						else shot_dir = etx < tx ? 1 : 0;
-						my_action[tank_id] = shot_dir + 4;
+						my_ac
+tion[tank_id] = shot_dir + 4;
 						if (shoot_friend(side, tank_id, fx, fy))
 							get_stupid_action(tank_id ^ 1);
 						if ((fx != tx || fy != ty) || my_action[tank_id] != my_action[tank_id ^ 1])
@@ -1182,6 +1189,8 @@ namespace TankGame
 					} 
 				}
 			}
+
+
 		double shot_weight[4] = { 0,0,0,0 }; //shoot与move的权重
 		bool skip_loop;
 		if (!force_move_mode) {
@@ -1258,7 +1267,6 @@ namespace TankGame
 						if (shot_weight[dir] == 0) break;
 					}
 				}
-				//注意：没考虑射出后对位
 				while (--cnt > 0) shot_weight[dir] *= 0.87; //墙每远一格 概率减小一定倍数
 			}
 			shot_weight[side] *= 1.2; //前
@@ -1300,8 +1308,12 @@ namespace TankGame
 		int ans = -1;
 		for (ans = 0; act[ans] < sum; ans++);
 		my_action[tank_id] = ans;
+
+
+
+
 		shot_dir = IsUniqueDir(side, tx, ty);
-		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是设计，则方案+4
+		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是射击，则方案+4
 		else if (min_step_to_base[side][tx][ty] < min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] + 0.1 + 0.1 * GetRandom())
 			my_action[tank_id] = -1; //不在射程内且行动后最短路变大，则改为stay
