@@ -26,6 +26,11 @@ using std::endl;
 using std::flush;
 using std::getline;
 using std::queue;
+using std::vector;
+using std::pair;
+using std::make_pair;
+using std::min;
+using std::max;
 //这个是自写的
 const int next_step[4][2] = { {1,0},{-1,0},{0,1},{0,-1} };
 
@@ -760,6 +765,7 @@ namespace TankGame
 
 	int my_action[tankPerSide] = { -2, -2 };
 	int min_step_to_base[sideCount][fieldHeight][fieldWidth];
+	int min_path[sideCount][tankPerSide][fieldHeight][fieldWidth];
 	double shot_range[sideCount][fieldHeight][fieldWidth], real_shot_range[sideCount][fieldHeight][fieldWidth]; 
 	//希望这个数组存的是类似于概率的数组，表示接下来的几步内某个进入某方射程的概率
 	queue<Coordinate> BFS_generate_queue;
@@ -926,6 +932,63 @@ namespace TankGame
 		if(field->tankAlive[side][1])min_step_to_base[side][field->tankY[side][1]][field->tankX[side][1]] -= 2;
 		return;
 	}
+
+	//by lcj
+	//由之前生成的 min_step_to_base数组 生成每方每个坦克的最短路路径
+	//注意：xy约定与sca不同
+	//dfs辅助函数
+	void _genetrate_min_path_dfs(const int& side,const int& tank,int x0,int y0, vector<pair<int, int>>& prev_path)
+	{
+		bool terminate = true;
+		
+
+		for (int i = 0; i < 4; i++)//环顾四周找梯度下降方向，那就是最短路的下一步
+		{
+			int x1 = x0 + dx[i];
+			int y1 = y0 + dy[i];
+			if (!CoordValid(x1, y1)) continue;
+			//else
+			if (min_step_to_base[side][y1][x1] < min_step_to_base[side][y0][x0]
+				&& min_step_to_base[side][y1][x1] != -1)//如果梯度下降，且不是钢板/水域（-1）的特殊情况，那么(x1,y1)就是最短路的下一步
+			{
+				terminate = false;
+				prev_path.push_back(make_pair(y1, x1));
+				_genetrate_min_path_dfs(side, tank, x1,y1, prev_path);//CORE RECURSION
+				prev_path.pop_back();
+			}
+		}
+		if (terminate)//递归终点（不只是基地！而是任何距离下降的终点，ie，前后左右找不到距离下降的地方了
+		{
+			for (auto p : prev_path)
+			{
+				int x = p.second;
+				int y = p.first;
+				min_path[side][tank][y][x] += 1;
+			}
+			//min_path[side][tank][y0][x0] += 1;
+			return;
+		}
+	}
+	void generate_min_path()
+	{
+		memset(min_path, 0, sizeof(min_path));
+		for (int side = 0; side < sideCount; side++)//perSide
+		{
+			for (int tank = 0; tank < tankPerSide; tank++)//perTank
+			{
+				//此坦克当前坐标
+				int tx = field->tankX[side][tank];
+				int ty = field->tankY[side][tank];
+
+				vector<pair<int, int>> prev_path;
+				_genetrate_min_path_dfs(side, tank, tx, ty, prev_path);
+
+			
+				//debug breakpoint
+				2 + 2 == 5;
+			}
+		}
+	}
 	//生成各个位置进入射程的概率数组（目前是傻瓜版）
 	void generate_shot_range(int side , bool IgnoreFeasible = true) {
 		if (IgnoreFeasible) {
@@ -985,6 +1048,19 @@ namespace TankGame
 		return;
 	}
 
+	void Debug_Print_MinStep();
+	//决策前的预处理
+	void pre_process()
+	{
+		genarate_min_step(0);
+		genarate_min_step(1);
+		generate_min_path();
+		generate_shot_range(0);
+		generate_shot_range(1);
+		generate_shot_range(0, false);
+		generate_shot_range(1, false);
+		Debug_Print_MinStep();
+	}
 
 	int cnt = 0;
 	bool avoid_failed = false;
@@ -1179,8 +1255,7 @@ namespace TankGame
 						int etx = field->tankY[side ^ 1][i] + next_step[shot_dir][0], ety = field->tankX[side ^ 1][i] + next_step[shot_dir][1];
 						if (etx == tx) shot_dir = ety < ty ? 3 : 2;
 						else shot_dir = etx < tx ? 1 : 0;
-						my_ac
-tion[tank_id] = shot_dir + 4;
+						my_action[tank_id] = shot_dir + 4;
 						if (shoot_friend(side, tank_id, fx, fy))
 							get_stupid_action(tank_id ^ 1);
 						if ((fx != tx || fy != ty) || my_action[tank_id] != my_action[tank_id ^ 1])
@@ -1402,13 +1477,9 @@ int main()
 	string data, globaldata;
 	TankGame::ReadInput(cin, data, globaldata);
 	TankGame::field->DebugPrint();
-	TankGame::genarate_min_step(0);
-	TankGame::genarate_min_step(1);
-	TankGame::generate_shot_range(0);
-	TankGame::generate_shot_range(1);
-	TankGame::generate_shot_range(0, false);
-	TankGame::generate_shot_range(1, false);
-	TankGame::Debug_Print_MinStep();
+
+	//预处理，包含了bfs等
+	TankGame::pre_process();
 
 	TankGame::get_stupid_action(0);
 	TankGame::generate_shot_range(0);
