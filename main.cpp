@@ -1,8 +1,9 @@
-// Tank2 游戏样例程序
+﻿// Tank2 游戏样例程序
 // 随机策略
 // 作者：289371298 upgraded from zhouhy
 // https://www.botzone.org.cn/games/Tank2
 
+#include <algorithm>
 #include <stack>
 #include <set>
 #include <string>
@@ -23,6 +24,9 @@ using std::endl;
 using std::flush;
 using std::getline;
 using std::queue;
+using std::pair;
+using std::make_pair;
+using std::min;
 namespace TankGame
 {
 	using std::stack;
@@ -30,7 +34,7 @@ namespace TankGame
 	using std::istream;
 
 #ifdef _MSC_VER
-#pragma region 常量定义和说明
+#pragma region //常量定义和说明
 #endif
 
 	enum GameResult
@@ -116,6 +120,11 @@ namespace TankGame
 		return x >= 0 && x < fieldWidth && y >= 0 && y < fieldHeight;
 	}
 
+	inline bool IsTank(FieldItem item)
+	{
+		return item | Blue0 | Blue1 | Red0 | Red1;
+	}
+
 	// 判断 item 是不是叠在一起的多个坦克
 	inline bool HasMultipleTank(FieldItem item)
 	{
@@ -166,7 +175,7 @@ namespace TankGame
 #ifdef _MSC_VER
 #pragma endregion
 
-#pragma region TankField 主要逻辑类
+#pragma region TankField //主要逻辑类
 #endif
 
 	class TankField
@@ -708,6 +717,112 @@ namespace TankGame
 #ifdef _MSC_VER
 #pragma endregion
 #endif
+
+#ifdef _MSC_VER
+#pragma region MyAlgorithm
+#endif
+
+	pair<Action,Action> MyGetAction()
+	{
+		int dis[fieldHeight][fieldWidth];
+		memset(dis, -1, sizeof(dis));
+		int& mySide = field->mySide;
+		int enemySide = mySide == Red ? Blue : Red;
+
+		//逆向bfs，求出每个格子到敌方基地的距离
+		dis[baseY[enemySide]][baseX[enemySide]] = 0;
+
+		queue<pair<int, int>> q;
+		q.push(make_pair(baseY[enemySide], baseX[enemySide]));
+		while (!q.empty())
+		{
+			pair<int, int> v = q.front(); q.pop();
+			for (int i = 0; i < 4; i++)
+			{
+				int y0 = v.first;
+				int x0 = v.second;
+				int y = v.first + dy[i];
+				int x = v.second + dx[i];
+				if (!CoordValid(x, y)) continue;
+				//else
+				int dis_new{ 0 };
+				switch (field->gameField[y0][x0])
+				{
+				case Base:
+				case None:
+				case Blue0:case Blue1:case Red0:case Red1:
+					dis_new = dis[y0][x0] + 1;
+					break;
+				case Brick:
+					dis_new = dis[y0][x0] + 2;
+					break;
+				default:
+					continue;
+				}
+				if (field->gameField[y][x] == Water || field->gameField[y][x] == Steel) 
+					continue;
+				if (dis_new < dis[y][x] || dis[y][x]==-1)
+				{
+					dis[y][x] = dis_new;
+					q.push(make_pair(y, x));
+				}
+				
+			}
+		}
+		//bfs结束，我们获得了dis数组
+
+		
+		//对坦克01环顾四周，找到最短路
+		Action act[tankPerSide] = { Invalid,Invalid };
+		for (int tank = 0; tank < tankPerSide; tank++)
+		{
+			int x = field->tankX[mySide][tank];
+			int y = field->tankY[mySide][tank];
+
+			//找到距离炸毁对方基地距离最短的方向
+			Action opt_dir;
+			//int dis_min = 0x7fffffff;//INT_MAX
+			int tx, ty;//target coord
+			for (int i = 0; i < 4; i++)//上下左右
+			{	
+				tx = x + dx[i];
+				ty = y + dy[i];
+				if (!CoordValid(tx,ty)) continue;
+				switch (field->gameField[ty][tx])
+				{
+				case Brick:
+					if (dis[ty][tx] == dis[y][x] - 2)//如果是墙的话，如果在最短路上，预期要两步走过去
+						opt_dir = (Action)i;
+					break;
+				default:
+					if (dis[ty][tx] == dis[y][x] - 1)//其他情况，如果dis是当前dis-1，那就说明在最短路上
+						opt_dir = (Action)i;
+					break;
+				}
+			}
+
+			tx = x + dx[opt_dir];
+			ty = y + dy[opt_dir];
+			if (field->gameField[ty][tx] == None)
+			{
+				act[tank] = (Action)opt_dir;//move
+				if (!field->ActionIsValid(mySide, tank, act[tank]))//in case 有非法情况
+					act[tank] = Stay;//改为不动
+			}
+			else //if (field->gameField[ty][tx] == Brick)
+			{
+				act[tank] = (Action)(opt_dir + 4);//shoot
+				if (!field->ActionIsValid(mySide, tank, act[tank]))//如果连续两次射击，非法
+					act[tank] = Stay;//改为不动
+			}
+
+		}
+		return make_pair(act[0], act[1]);
+	}
+
+#ifdef _MSC_VER
+#pragma endregion
+#endif
 }
 int RandBetween(int from, int to)
 {
@@ -726,6 +841,7 @@ TankGame::Action RandAction(int tank)
 
 
 
+
 int main()
 {
 	srand((unsigned)time(nullptr));
@@ -733,5 +849,8 @@ int main()
 	string data, globaldata;
 	TankGame::ReadInput(cin, data, globaldata);
 	TankGame::field->DebugPrint();
-	TankGame::SubmitAndExit(RandAction(0), RandAction(1));
+	
+	pair<TankGame::Action, TankGame::Action> act = TankGame::MyGetAction();
+	TankGame::SubmitAndExit(act.first,act.second);
+
 }
