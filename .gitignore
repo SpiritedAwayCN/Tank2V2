@@ -37,3 +37,8 @@ Debug/
 *.filters
 *.user
 *.pdb
+
+*.sln
+*.suo
+*.db
+*.opendb
