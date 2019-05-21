@@ -881,18 +881,18 @@ namespace TankGame
 			BFS_generate_queue.push(Coordinate{ i,baseX[side ^ 1] });
 		}
 		bool left_half = false, right_half = false;
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 3; i++) {
 			for (int j = 0; j < 3; j++) {
-				if (IsTank(field->gameField[i + 5 * (1 - side)][j]) && GetTankSide(field->gameField[i + 5 * (1 - side)][j]) != side) {
+				if (IsTank(field->gameField[i + 6 * (1 - side)][j]) && GetTankSide(field->gameField[i + 6 * (1 - side)][j]) != side) {
 					left_half = true;
 					break;
 				} //左半边靠近对方基地的1/4区域内有地方坦克
 			}
 			if (left_half)break;
 		}
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < 3; i++) {
 			for (int j = 6; j < 9; j++) {
-				if (IsTank(field->gameField[i + 5 * (1 - side)][j]) && GetTankSide(field->gameField[i + 5 * (1 - side)][j]) != side) {
+				if (IsTank(field->gameField[i + 6 * (1 - side)][j]) && GetTankSide(field->gameField[i + 6 * (1 - side)][j]) != side) {
 					right_half = true;
 					break;
 				} //右半边靠近对方基地的1/4区域内有地方坦克
@@ -1253,13 +1253,15 @@ namespace TankGame
 				if (shot_dir >= 0 && InShootRange(tx, ty, field->tankY[side ^ 1][i] + next_step[shot_dir][0], field->tankX[side ^ 1][i] + next_step[shot_dir][1], false, side^1)) {
 					if (field->previousActions[field->currentTurn - 1][side ^ 1][i] > Left || GetRandom() <= 0.95) {
 						int etx = field->tankY[side ^ 1][i] + next_step[shot_dir][0], ety = field->tankX[side ^ 1][i] + next_step[shot_dir][1];
-						if (etx == tx) shot_dir = ety < ty ? 3 : 2;
-						else shot_dir = etx < tx ? 1 : 0;
-						my_action[tank_id] = shot_dir + 4;
-						if (shoot_friend(side, tank_id, fx, fy))
-							get_stupid_action(tank_id ^ 1);
-						if ((fx != tx || fy != ty) || my_action[tank_id] != my_action[tank_id ^ 1])
-							return my_action[tank_id];
+						if (min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][etx][ety] || GetRandom() <= 0.1) {
+							if (etx == tx) shot_dir = ety < ty ? 3 : 2;
+							else shot_dir = etx < tx ? 1 : 0;
+							my_action[tank_id] = shot_dir + 4;
+							if (shoot_friend(side, tank_id, fx, fy))
+								get_stupid_action(tank_id ^ 1);
+							if ((fx != tx || fy != ty) || my_action[tank_id] != my_action[tank_id ^ 1])
+								return my_action[tank_id];
+						}
 						my_action[tank_id] = -2;
 					} 
 				}
