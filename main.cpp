@@ -835,15 +835,18 @@ namespace TankGame
 		return ans;
 	}
 	//队友坦克则搜索时权重+2
+	constexpr int tank_weight = 3;
+
+
 	inline void Friend_Weight(int side, int x, int y, int* num = NULL) {
 		FieldItem item = field->gameField[x][y];
 		if (!num) num = &min_step_to_base[side][x][y];
 		if (HasMultipleTank(item)) {
-			if (x == field->tankY[side][0] && y == field->tankX[side][0]) *num += 2;
-			if (x == field->tankY[side][1] && y == field->tankX[side][1]) *num += 2; //队友重合则+4
+			if (x == field->tankY[side][0] && y == field->tankX[side][0]) *num += tank_weight;
+			if (x == field->tankY[side][1] && y == field->tankX[side][1]) *num += tank_weight; //队友重合则+4
 		}
 		else if (IsTank(item) && GetTankSide(item) == side && field->tankAlive[side][GetTankID(item)])
-			*num += 2;
+			*num += tank_weight;
 	}
 	//入队处理，仅限初始化最小数组时调用
 	inline void push_BFS_queue(int x, int y, int step, int side) {
@@ -852,7 +855,7 @@ namespace TankGame
 		int temp = step;
 		temp += field->gameField[x][y] == Brick ? 2 : 1;  //砖块则步数+2 否则+1
 		Friend_Weight(side, x, y, &temp);
-		if (abs(x - baseY[side]) + abs(y - baseX[side]) <= 2 && field->gameField[x][y] == Brick) temp += 1;
+		if (abs(x - baseY[side]) + abs(y - baseX[side]) <= 1 && field->gameField[x][y] == Brick) temp += 1;
 		if (min_step_to_base[side][x][y] > temp || min_step_to_base[side][x][y] < 0) {
 			BFS_generate_queue.push(Coordinate{ x,y });
 			min_step_to_base[side][x][y] = temp;
@@ -928,8 +931,8 @@ namespace TankGame
 			push_BFS_queue(cx, cy - 1, min_step_to_base[side][cx][cy], side);
 			push_BFS_queue(cx, cy + 1, min_step_to_base[side][cx][cy], side);
 		}
-		if(field->tankAlive[side][0])min_step_to_base[side][field->tankY[side][0]][field->tankX[side][0]] -= 2;
-		if(field->tankAlive[side][1])min_step_to_base[side][field->tankY[side][1]][field->tankX[side][1]] -= 2;
+		if(field->tankAlive[side][0])min_step_to_base[side][field->tankY[side][0]][field->tankX[side][0]] -= tank_weight;
+		if(field->tankAlive[side][1])min_step_to_base[side][field->tankY[side][1]][field->tankX[side][1]] -= tank_weight;
 		return;
 	}
 
@@ -1047,7 +1050,7 @@ namespace TankGame
 		
 		return;
 	}
-
+	int temp_action[tankPerSide] = { -1,-1 };
 	void Debug_Print_MinStep();
 	//决策前的预处理
 	void pre_process()
@@ -1086,7 +1089,7 @@ namespace TankGame
 
 		//↓一下可射到基地的特判
 		if ((min_step_to_base[side][tx][ty] == 1 || tx == baseY[side^1]) && !avoid_failed) {
-			if (!force_move_mode) {
+			if (!force_move_mode && (min_step_to_base[side][tx][ty] == 1 || real_shot_range[side^1][tx][ty]<=0.001)) {
 				if (baseX[side ^ 1] == ty) { my_action[tank_id] = side + 4;} //同一竖行，则向前射
 				else { my_action[tank_id] = 4 + (baseX[side ^ 1] < ty ? 3 : 2); } //同一横行，则向基地射
 			}
@@ -1126,7 +1129,7 @@ namespace TankGame
 
 		if (HasMultipleTank(field->gameField[tx][ty])) {
 			int shot_side = IsUniqueDir(side ^ 1, tx, ty);
-			if (shot_side >= 0 && min_step_to_base[side ^ 1][tx][ty] <= min_step_to_base[side][tx][ty]) {
+			if (shot_side >= 0 && min_step_to_base[side ^ 1][tx][ty] <= min_step_to_base[side][tx][ty] + 2) {
 				int tid = -1;
 				for (int i = 0; i < tankPerSide; i++) {
 					if (field->tankY[side ^ 1][i] == tx && field->tankX[side ^ 1][i] == ty) {
@@ -1196,7 +1199,7 @@ namespace TankGame
 						double mrisk = 10;
 						int ans2 = -1, mdis = 100;
 						for (int dir = 0; dir < 4; dir++) {
-							if (!ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) continue;
+							if (!CoordValid(tx + next_step[dir][0], ty + next_step[dir][1]) || !ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) continue;
 							if (mrisk > shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
 								ans2 = dir; mrisk = shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]];
 								mdis = min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]];
@@ -1253,10 +1256,12 @@ namespace TankGame
 				if (shot_dir >= 0 && InShootRange(tx, ty, field->tankY[side ^ 1][i] + next_step[shot_dir][0], field->tankX[side ^ 1][i] + next_step[shot_dir][1], false, side^1)) {
 					if (field->previousActions[field->currentTurn - 1][side ^ 1][i] > Left || GetRandom() <= 0.95) {
 						int etx = field->tankY[side ^ 1][i] + next_step[shot_dir][0], ety = field->tankX[side ^ 1][i] + next_step[shot_dir][1];
+						if (etx == tx) shot_dir = ety < ty ? 3 : 2;
+						else shot_dir = etx < tx ? 1 : 0;
+						temp_action[tank_id] = shot_dir + 4;;
 						if (min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][field->tankY[side ^ 1][i]][field->tankX[side ^ 1][i]]
 							|| GetRandom() <= 0.1) {
-							if (etx == tx) shot_dir = ety < ty ? 3 : 2;
-							else shot_dir = etx < tx ? 1 : 0;
+							
 							my_action[tank_id] = shot_dir + 4;
 							if (shoot_friend(side, tank_id, fx, fy))
 								get_stupid_action(tank_id ^ 1);
@@ -1292,12 +1297,12 @@ namespace TankGame
 					shot_weight[dir] += real_shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] * (cnt > 1 ? 0.8 : -0.4);
 					if (shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] > 0 && real_shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]] < 0.0001)
 						shot_weight[dir] *= 0.85;
-					if (cnt + min_step_to_base[side][ii][jj] > min_step_to_base[side][tx][ty]) {
+					if (min_path[side][tank_id][ii][jj] == 0) {
 						//被射的点不在最短路上（目前这个方法有问题,要修改）
 						shot_weight[dir] /= 4 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
 					}
-					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.92; //己方半场射击概率更低 
-					else shot_weight[dir] *= 1.08; //对方半场的射率更高
+					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.9; //己方半场射击概率更低 
+					else shot_weight[dir] *= 3; //对方半场的射率更高
 					if (real_shot_range[side ^ 1][ii][jj] > 0) shot_weight[dir] *= 0.5;
 					int wi = ii, wj = jj;
 					//以下：本次射击后，不能在射击方向（与反方向）上进入对方射程
@@ -1322,6 +1327,8 @@ namespace TankGame
 										&& !(field->previousActions[field->currentTurn - 1][side^1][tid] > Left) && cnt == 0
 										&& min_step_to_base[side][tx][ty]>= min_step_to_base[side ^ 1][uc][ty + bias]) {
 										//预判 守株待兔 准备反杀（目前不完善）
+										//shot_weight[dir] = 0;
+										//break;
 										return my_action[tank_id] = -1;
 									}
 									break;
@@ -1336,7 +1343,9 @@ namespace TankGame
 										&& !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left) && cnt==0
 										&& min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][tx + bias][uc]) {
 										// 预判 守株待兔 准备反杀（目前不完善）
-										return my_action[tank_id] = -1;
+										shot_weight[dir] = 0;
+										break;
+										//return my_action[tank_id] = -1;
 									}
 									break;
 								}
@@ -1351,6 +1360,7 @@ namespace TankGame
 			shot_weight[side ^ 1] *= 0.8; //后
 		}
 		//act[dir]<0不考虑 shot_weight==0不考虑
+		
 		for (int dir = 0; dir < 4; dir++) {
 			if (GetRandom() < shot_weight[dir] || !ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false))
 				act[dir] = (1.2 * act[dir]) * shot_weight[dir], shot_weight[dir] = 2;//=2(>1)作为标记供以后判断是移还是射(别中了射击)
@@ -1412,7 +1422,14 @@ namespace TankGame
 			}
 			my_action[tank_id] = -1;
 		}
-
+		else if (min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] >= min_step_to_base[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]]) {
+			int side_num;
+			for (int i = 0; i < tankPerSide; i++) {
+				side_num = IsUniqueDir(side ^ 1, field->tankY[side ^ 1][i], field->tankX[side ^ 1][i]);
+				if (side_num >= 0 && tx + next_step[ans][0] == field->tankY[side ^ 1][i] + next_step[side_num][0] && ty + next_step[ans][1] == field->tankX[side ^ 1][i] + next_step[side_num][1])
+					my_action[tank_id] = -1;
+			}
+		}
 		return my_action[tank_id];
 
 	}
@@ -1449,6 +1466,20 @@ namespace TankGame
 				cout << endl;
 			}
 			cout << endl;
+		}
+		cout << "===========Real Shoot Range===========\n";
+		for (int side = 0; side < 2; side++) {
+			for (int id = 0; id < tankPerSide; id++) {
+				cout << "###side = " << side <<" "<< id << " ###\n";
+				for (int i = 0; i < fieldHeight; i++) {
+					for (int j = 0; j < fieldWidth; j++) {
+						cout << min_path[side][id][i][j] << ' ';
+					}
+					cout << endl;
+				}
+				cout << endl;
+			}
+			
 		}
 #endif
 	}
@@ -1488,6 +1519,10 @@ int main()
 	TankGame::generate_shot_range(0);
 	TankGame::generate_shot_range(1);
 	TankGame::get_stupid_action(1);
+	for (int i = 0; i < TankGame::tankPerSide; i++) {
+		if (TankGame::my_action[i] == -1 && TankGame::temp_action[i] != -1 && TankGame::GetRandom() < 0.9) TankGame::my_action[i] = TankGame::temp_action[i];
+	}
+
 	TankGame::Action act0 = TankGame::Get_My_Action(TankGame::my_action[0] % 4, TankGame::my_action[0] >= 4);
 	TankGame::Action act1 = TankGame::Get_My_Action(TankGame::my_action[1] % 4, TankGame::my_action[1] >= 4);
 	int side = TankGame::field->mySide;
