@@ -1419,6 +1419,9 @@ namespace TankGame
 			my_action[tank_id] = -1; //不在射程内且行动后最短路变大，则改为stay
 		else if (min_step_to_base[side][tx][ty] <= min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] && stay_for_beat)
 			my_action[tank_id] = -1;
+		else if(min_step_to_base[side][tx][ty] == min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
+			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]])
+			my_action[tank_id] = -1;
 		else if (shot_dir >= 0&& ans==shot_dir && real_shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] >0.0001) {
 			int tid = -1, count;
 			for (int i = 0; i < tankPerSide; i++) {
@@ -1440,8 +1443,10 @@ namespace TankGame
 			while (shot_weight[ans] < GetRandom() && try_max_count) {
 				try_max_count--;
 			}
-			if(!try_max_count)
+			if (!try_max_count)
 				my_action[tank_id] = -1;
+			else
+				my_action[tank_id] += 4;
 		}
 		else if (min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] >= min_step_to_base[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]]) {
 			int side_num;
