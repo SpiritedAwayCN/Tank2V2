@@ -1175,6 +1175,9 @@ namespace TankGame
 				if (field->gameField[gx][gy] == Brick && force_move_mode) act[i] = -1.8;
 			}
 			act[i] += 0.8;
+			if (my_action[tank_id ^ 1] != -2 && gx==fx && gy==fy) {
+				act[i] = -0.1;
+			}
 		}
 		//↑先把合法的弄成非负
 
