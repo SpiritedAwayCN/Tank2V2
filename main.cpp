@@ -1074,7 +1074,7 @@ namespace TankGame
 		
 		return;
 	}
-	int temp_action[tankPerSide] = { -1,-1 };
+	int temp_action[tankPerSide] = { Stay,Stay };
 	void Debug_Print_MinStep();
 	//决策前的预处理
 	void pre_process()
@@ -1118,7 +1118,7 @@ namespace TankGame
 				else { my_action[tank_id] = 4 + (baseX[side ^ 1] < ty ? 3 : 2); } //同一横行，则向基地射
 			}
 			else {
-				int ans = -1;//默认不动
+				int ans = Stay;//默认不动
 				int gx, gy;
 				bool avoid_friend = min_step_to_base[side][fx][fy] == 1 && shoot_friend(side, tank_id ^ 1, tx, ty);
 				double risk = shot_range[side ^ 1][tx][ty]; //选取为1且射中风险最小的位置
@@ -1141,7 +1141,7 @@ namespace TankGame
 					}
 				}
 				my_action[tank_id] = ans;
-				if (ans == -1 && avoid_friend) {
+				if (ans == Stay && avoid_friend) {
 					avoid_failed = true;
 					get_stupid_action(tank_id ^ 1);
 				}
@@ -1203,7 +1203,7 @@ namespace TankGame
 
 		bool stay_for_beat = false;
 		if (shot_range[side ^ 1][tx][ty] > 0) {
-			int ans = -1, tid = -1, etx = 0, ety = 0;
+			int ans = Stay, tid = -1, etx = 0, ety = 0;
 			// 不要怂 直接刚 看看是哪个方向
 			for (int dir = 0; dir < 4; dir++) {
 				for (int ii = tx, jj = ty; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
@@ -1222,7 +1222,7 @@ namespace TankGame
 					if (!(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)) {
 						//我方更近，尽可能不参与对峙（若这个tank上回合发过子弹则忽略tank对峙，不进入此if）
 						double mrisk = 10;
-						int ans2 = -1, mdis = 100;
+						int ans2 = Stay, mdis = 100;
 						for (int dir = 0; dir < 4; dir++) {
 							if (!CoordValid(tx + next_step[dir][0], ty + next_step[dir][1]) || !ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) continue;
 							if (mrisk > shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
@@ -1255,7 +1255,7 @@ namespace TankGame
 			else if (ans >= 0 && force_move_mode && !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)
 				&& GetRandom() < 0.7) {
 				double mrisk = 10;
-				int ans2 = -1, mdis = 100;
+				int ans2 = Stay, mdis = 100;
 				for (int dir = 0; dir < 4; dir++) {
 					if (mrisk > shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
 						ans2 = dir; mrisk = shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]];
@@ -1368,7 +1368,7 @@ namespace TankGame
 										//预判 守株待兔 准备反杀（目前不完善）
 										//shot_weight[dir] = 0;
 										//break;
-										return my_action[tank_id] = -1;
+										return my_action[tank_id] = Stay;
 									}
 									break;
 								}
@@ -1387,7 +1387,7 @@ namespace TankGame
 										// 预判 守株待兔 准备反杀（目前不完善）
 										shot_weight[dir] = 0;
 										break;
-										//return my_action[tank_id] = -1;
+										//return my_action[tank_id] = Stay;
 									}
 									break;
 								}
@@ -1419,7 +1419,7 @@ namespace TankGame
 		double sum = 0, max_p = 0;
 		//归一化&前缀和
 		for (int i = 0; i < 4; i++)sum += act[i];
-		if (sum == 0) return my_action[tank_id] = -1;
+		if (sum == 0) return my_action[tank_id] = Stay;
 		for (int i = 0; i < 4; i++) { 
 			act[i] /= sum;
 			if (max_p < act[i]) max_p = act[i]; //获取最大概率
@@ -1435,7 +1435,7 @@ namespace TankGame
 			if (i > 0) act[i] += act[i - 1];
 		}
 		sum = GetRandom();
-		int ans = -1;
+		int ans = Stay;
 		for (ans = 0; act[ans] < sum; ans++);
 		my_action[tank_id] = ans;
 
@@ -1446,12 +1446,12 @@ namespace TankGame
 		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是射击，则方案+4
 		else if (min_step_to_base[side][tx][ty] < min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]] + 0.1 + 0.1 * GetRandom())
-			my_action[tank_id] = -1; //不在射程内且行动后最短路变大，则改为stay
+			my_action[tank_id] = Stay; //不在射程内且行动后最短路变大，则改为stay
 		else if (min_step_to_base[side][tx][ty] <= min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] && stay_for_beat)
-			my_action[tank_id] = -1;
+			my_action[tank_id] = Stay;
 		else if(min_step_to_base[side][tx][ty] == min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]])
-			my_action[tank_id] = -1;
+			my_action[tank_id] = Stay;
 		else if (shot_dir >= 0&& ans==shot_dir && real_shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] >0.0001) {
 			int tid = -1, count;
 			for (int i = 0; i < tankPerSide; i++) {
@@ -1474,7 +1474,7 @@ namespace TankGame
 				try_max_count--;
 			}
 			if (!try_max_count)
-				my_action[tank_id] = -1;
+				my_action[tank_id] = Stay;
 			else
 				my_action[tank_id] += 4;
 		}
@@ -1483,7 +1483,7 @@ namespace TankGame
 			for (int i = 0; i < tankPerSide; i++) {
 				side_num = IsUniqueDir(side ^ 1, field->tankY[side ^ 1][i], field->tankX[side ^ 1][i]);
 				if (side_num >= 0 && tx + next_step[ans][0] == field->tankY[side ^ 1][i] + next_step[side_num][0] && ty + next_step[ans][1] == field->tankX[side ^ 1][i] + next_step[side_num][1])
-					my_action[tank_id] = -1;
+					my_action[tank_id] = Stay;
 			}
 		}
 		return my_action[tank_id];
@@ -1562,30 +1562,34 @@ TankGame::Action RandAction(int tank)
 
 int main()
 {
-	srand((unsigned)time(nullptr));
-
+	//读入信息
 	string data, globaldata;
 	TankGame::ReadInput(cin, data, globaldata);
 	TankGame::field->DebugPrint();
 
+	//初始化随机种子
+	srand((unsigned)time(nullptr));
+
 	//预处理，包含了bfs等
 	TankGame::pre_process();
 
+	//核心决策
 	TankGame::get_stupid_action(0);
 	TankGame::generate_shot_range(0);
 	TankGame::generate_shot_range(1);
 	TankGame::get_stupid_action(1);
 	for (int i = 0; i < TankGame::tankPerSide; i++) {
-		if (TankGame::my_action[i] == -1 && TankGame::temp_action[i] != -1 && TankGame::GetRandom() < 0.9)
+		if (TankGame::my_action[i] == Stay && TankGame::temp_action[i] != Stay && TankGame::GetRandom() < 0.9)
 			TankGame::my_action[i] = TankGame::temp_action[i];
 	}
 
+	//lcj: ?????
+	//任务：历史位置记录 坦克对峙模式
 	TankGame::Action act0 = TankGame::Get_My_Action(TankGame::my_action[0] % 4, TankGame::my_action[0] >= 4);
 	TankGame::Action act1 = TankGame::Get_My_Action(TankGame::my_action[1] % 4, TankGame::my_action[1] >= 4);
 	int side = TankGame::field->mySide;
-	//任务：历史位置记录 坦克对峙模式
-
-	//防错处理，若生成的策略无效则：
+	
+	//以防万一，若生成的策略无效则随机：
 	if (!TankGame::field->ActionIsValid(side, 0, act0)) {
 		act0 = RandAction(0);
 		if (TankGame::GetRandom() < 0.65) act0 = TankGame::Stay;
@@ -1595,5 +1599,6 @@ int main()
 		if (TankGame::GetRandom() < 0.65) act1 = TankGame::Stay;
 	}
 
+	//输出，结束
 	TankGame::SubmitAndExit(act0, act1);
 }
