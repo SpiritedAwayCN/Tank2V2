@@ -1334,8 +1334,9 @@ namespace TankGame
 						shot_weight[dir] /= 2.4 + 1.2*GetRandom();
 					if (min_path[side][tank_id][ii][jj] == 0) {
 						//被射的点不在最短路上（目前这个方法有问题,要修改）
-						if(min_path[side][tank_id^1][ii][jj])shot_weight[dir] /= 3 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
-						else shot_weight[dir] = 0;
+						//if(min_path[side][tank_id^1][ii][jj])shot_weight[dir] /= 3 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
+						//else 
+						shot_weight[dir] = 0;
 					}
 					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.9; //己方半场射击概率更低 
 					else shot_weight[dir] *= 2; //对方半场的射率更高
