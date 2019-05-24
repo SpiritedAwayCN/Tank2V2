@@ -802,7 +802,7 @@ namespace TankGame
 		int ii, jj;
 		for (ii = sx, jj = sy; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]);
 			ii += next_step[dir][0], jj += next_step[dir][1]) {
-			if (field->gameField[ii][jj] == Brick) break;
+			//if (field->gameField[ii][jj] == Brick) break;
 		}
 		return Coordinate{ ii,jj };
 	}
@@ -1334,8 +1334,8 @@ namespace TankGame
 						shot_weight[dir] /= 2.4 + 1.2*GetRandom();
 					if (min_path[side][tank_id][ii][jj] == 0) {
 						//被射的点不在最短路上（目前这个方法有问题,要修改）
-						if(min_path[side][tank_id^1][ii][jj])shot_weight[dir] /= 3 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
-						else shot_weight[dir] = 0;
+						/*if(min_path[side][tank_id^1][ii][jj])shot_weight[dir] /= 6 + (cnt + min_step_to_base[side][ii][jj] - min_step_to_base[side][tx][ty])*GetRandom();
+						else*/ shot_weight[dir] = 0;
 					}
 					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.9; //己方半场射击概率更低 
 					else shot_weight[dir] *= 2; //对方半场的射率更高
@@ -1572,8 +1572,6 @@ int main()
 	TankGame::pre_process();
 
 	TankGame::get_stupid_action(0);
-	TankGame::generate_shot_range(0);
-	TankGame::generate_shot_range(1);
 	TankGame::get_stupid_action(1);
 	for (int i = 0; i < TankGame::tankPerSide; i++) {
 		if (TankGame::my_action[i] == -1 && TankGame::temp_action[i] != -1 && TankGame::GetRandom() < 0.9)
