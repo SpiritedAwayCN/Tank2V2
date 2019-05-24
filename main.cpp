@@ -798,6 +798,15 @@ namespace TankGame
 		return false;
 	}
 
+	inline Coordinate shoot_coord(int dir, int sx, int sy) {
+		int ii, jj;
+		for (ii = sx, jj = sy; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]);
+			ii += next_step[dir][0], jj += next_step[dir][1]) {
+			if (field->gameField[ii][jj] == Brick) break;
+		}
+		return Coordinate{ ii,jj };
+	}
+
 	//判断(x,y)是否在(tx,ty)这个坦克的射程内
 	inline bool InShootRange(int tx,int ty, int x, int y, bool IgnoreTank = true, int IgnoreSide = -1) {
 		int l, r;
@@ -1127,7 +1136,7 @@ namespace TankGame
 				get_stupid_action(tank_id ^ 1);
 			return my_action[tank_id];
 		}
-
+		int Ignore_tankid = -1;
 		if (HasMultipleTank(field->gameField[tx][ty])) {
 			int shot_side = IsUniqueDir(side ^ 1, tx, ty);
 			if (shot_side >= 0 && min_step_to_base[side ^ 1][tx][ty] <= min_step_to_base[side][tx][ty] + 2) {
@@ -1140,24 +1149,21 @@ namespace TankGame
 				if (tid >= 0) {
 					Coordinate etc{ tx,ty }, tc{ tx,ty };
 					etc.Rev(field->previousActions[field->currentTurn - 1][side ^ 1][tid]);
-					etc.Rev(field->previousActions[field->currentTurn - 2][side ^ 1][tid]);
 					tc.Rev(field->previousActions[field->currentTurn - 1][side][tank_id]);
-					tc.Rev(field->previousActions[field->currentTurn - 2][side][tank_id]);
-					if (force_move_mode && etc!=tc) {
-						return my_action[tank_id] = shot_side;
-					}/*
-					else if (field->previousActions[field->currentTurn - 1][side ^ 1][tid] == Stay && field->previousActions[field->currentTurn - 2][side ^ 1][tid] == Stay) {
-						shot_side = IsUniqueDir(side, tx, ty);
-						return my_action[tank_id] = shot_side;
-					}*/
-					else if(etc!=tc){
+					if (etc != tc) {
+						Coordinate cord = shoot_coord(shot_side, tx, ty);
 						my_action[tank_id] = shot_side + 4;
-						if (!shoot_friend(side, tank_id, fx, fy))
+						if (!shoot_friend(side, tank_id, fx, fy) && (!CoordValid(cord.x,cord.y) || min_path[side^1][tid^1][cord.x][cord.y]==0))
 							return my_action[tank_id];
 						my_action[tank_id] = -2;
 					}
-					else {
-						return my_action[tank_id] = -1;
+					if (GetRandom() < 0.4) {
+						etc.Rev(field->previousActions[field->currentTurn - 2][side ^ 1][tid]);
+						tc.Rev(field->previousActions[field->currentTurn - 2][side][tank_id]);
+					}
+					if (etc.x==tc.x && etc.y==tc.y) {
+						Ignore_tankid = tid;
+						my_action[tank_id] = -2;
 					}
 				}
 			}
@@ -1274,7 +1280,14 @@ namespace TankGame
 							if (shoot_friend(side, tank_id, fx, fy))
 								get_stupid_action(tank_id ^ 1);
 							if ((fx != tx || fy != ty) || my_action[tank_id] != my_action[tank_id ^ 1])
-								return my_action[tank_id];
+								if (min_step_to_base[side][fx][fy] + (my_action[tank_id^1]>=0 && my_action[tank_id]<=3)
+									<= min_step_to_base[side ^ 1][field->tankY[side ^ 1][i ^ 1]][field->tankX[side ^ 1][i ^ 1]]) {
+									Coordinate cord = shoot_coord(shot_dir, tx, ty);
+									if (min_path[side ^ 1][i ^ 1][cord.x][cord.y] == 0 || GetRandom() < 0.1) {
+										return my_action[tank_id];
+									}
+								}
+								
 						}
 						my_action[tank_id] = -2;
 					} 
@@ -1437,7 +1450,7 @@ namespace TankGame
 				for (count = 1; count <= field->currentTurn - 1; count++) {
 					if (field->previousActions[field->currentTurn-count][side ^ 1][tid] != Stay) break;
 				}
-				if (count > 5 + int(GetRandom()*20) && min_step_to_base[side][tx][ty]<=min_step_to_base[side^1][tx][ty])
+				if ((count > 2 + int(GetRandom()*1.8) && min_step_to_base[side][tx][ty]<=min_step_to_base[side^1][tx][ty]) || Ignore_tankid == tid)
 					return my_action[tank_id];
 			}
 			// El 执行到此处，表明最短路唯一下降前方在敌方射程内，并且一定不会往前走了
