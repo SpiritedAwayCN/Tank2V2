@@ -959,10 +959,14 @@ namespace TankGame
 		{
 			int x1 = x0 + dx[i];
 			int y1 = y0 + dy[i];
+
+			//如果坐标到了战场外面，跳过
 			if (!CoordValid(x1, y1)) continue;
+			//如果遇到了钢板/水域，跳过
+			if (min_step_to_base[side][y1][x1] == -1) continue;
 			//else
-			if (min_step_to_base[side][y1][x1] < min_step_to_base[side][y0][x0]
-				&& min_step_to_base[side][y1][x1] != -1)//如果梯度下降，且不是钢板/水域（-1）的特殊情况，那么(x1,y1)就是最短路的下一步
+			//如果梯度下降，那么(x1,y1)就是最短路的下一步
+			if (min_step_to_base[side][y1][x1] < min_step_to_base[side][y0][x0])	
 			{
 				terminate = false;
 				prev_path.push_back(make_pair(y1, x1));
@@ -970,6 +974,7 @@ namespace TankGame
 				prev_path.pop_back();
 			}
 		}
+		
 		if (terminate)//递归终点（不只是基地！而是任何距离下降的终点，ie，前后左右找不到距离下降的地方了
 		{
 			for (auto p : prev_path)
@@ -978,7 +983,16 @@ namespace TankGame
 				int y = p.first;
 				min_path[side][tank][y][x] += 1;
 			}
-			//min_path[side][tank][y0][x0] += 1;
+			//特殊情况：如果四周都没有梯度下降的方向，那应该是已经到了和敌方基地同一条线上，
+			//不用走，直接射击也可以获胜
+			//这时，把这个点到基地都标记上最短路
+			int enemySide = ((side == Red) ? Blue : Red);
+			for (int y = min(y0, baseY[enemySide]); y <= max(y0, baseY[enemySide]); y++)
+				for (int x = min(x0, baseX[enemySide]); x <= max(x0, baseX[enemySide]); x++)
+					min_path[side][tank][y][x] += 1;
+			//最后，(x0,y0)和敌方基地上多加1，减去
+			min_path[side][tank][y0][x0] -= 1;
+			min_path[side][tank][baseY[enemySide]][baseX[enemySide]] -= 1;
 			return;
 		}
 	}
@@ -1509,10 +1523,10 @@ namespace TankGame
 			}
 			cout << endl;
 		}
-		cout << "===========Real Shoot Range===========\n";
+		cout << "===========min_path array===========\n";
 		for (int side = 0; side < 2; side++) {
 			for (int id = 0; id < tankPerSide; id++) {
-				cout << "###side = " << side <<" "<< id << " ###\n";
+				cout << "###(side,tank) = (" << side <<","<< id << ") ###\n";
 				for (int i = 0; i < fieldHeight; i++) {
 					for (int j = 0; j < fieldWidth; j++) {
 						cout << min_path[side][id][i][j] << ' ';
