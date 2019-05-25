@@ -1266,6 +1266,35 @@ namespace TankGame
 		}
 	}
 
+	int std2sca(int act)
+	{
+		if (act < 0) return act;
+		else if (act < 4)
+		{
+			if (act == Down)
+				act = 0;
+			else if (act == Up)
+				act = 1;
+			else if (act == Left)
+				act = 3;
+			else if (act == Right)
+				act = 2;
+			return act;
+		}
+		else
+		{
+			act -= 4;
+			if (act == Down)
+				act = 0;
+			else if (act == Up)
+				act = 1;
+			else if (act == Left)
+				act = 3;
+			else if (act == Right)
+				act = 2;
+			return act + 4;
+		}
+	}
 	void get_revising_defense_act(int tank, int enemyTank)
 	{
 		int mySide = field->mySide;
@@ -1318,7 +1347,7 @@ namespace TankGame
 			int ty = y + dy[dir];
 			//若往那个方向走能卡住敌方坦克，则改变策略，进行防御
 			if (blocking_range[ty][tx])
-				my_action[tank] = (Action)dir;
+				my_action[tank] = (Action)std2sca(dir);
 		}
 	}
 
