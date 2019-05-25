@@ -1952,9 +1952,9 @@ int main()
 	int mySide = TankGame::field->mySide;
 	for (int tank = 0; tank < TankGame::tankPerSide; tank++)
 	{
-		if (TankGame::field->tankAlive[mySide^1][tank] &&
-			TankGame::min_step_to_base[mySide][tank] > TankGame::min_step_to_base[mySide ^ 1][tank])
-			TankGame::get_revising_defense_act(tank, tank);//防御同边坦克
+		if (TankGame::field->tankAlive[mySide ^ 1][tank] &&
+			TankGame::min_step_to_base[mySide][tank] > TankGame::min_step_to_base[mySide ^ 1][tank ^ 1])
+			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 	}
 
 	//lcj: ?????
