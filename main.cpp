@@ -1455,13 +1455,14 @@ namespace TankGame
 			if (min_path[enemySide][enemyTank][ty][tx])
 			{
 				//同时，如果也能减小我离敌方基地距离，那更好
-				if (min_step_to_base[mySide][ty][tx] < best_my_value)
+				//后来注：经实战发现还是不要这一条比较好...
+				/*if (min_step_to_base[mySide][ty][tx] < best_my_value)
 				{
 					best_dir = dir;
 					best_my_value = min_step_to_base[mySide][ty][tx];
 					best_enemy_value = min_path[enemySide][enemyTank][ty][tx];
 				}
-				else if (min_step_to_base[mySide][ty][tx] = best_my_value)
+				else*/ if (min_step_to_base[mySide][ty][tx] = best_my_value)
 				{//往更有可能把对面挡住的方向走
 					if (min_path[enemySide][enemyTank][ty][tx] > best_enemy_value)
 					{
