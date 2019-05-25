@@ -1275,8 +1275,10 @@ namespace TankGame
 				int ey = t.ty + dy[t.dscDir];//可能的敌人的位置
 				bool dangerousEnemyBehindWall = false;
 				//找对面的地方坦克
-				for (; CoordValid(ex, ey) && (field->gameField[ey][ex] == None || field->gameField[ey][ex] == Water);
+			
+				for (; CoordValid(ex, ey) && (field->gameField[ey][ex] == None || field->gameField[ey][ex] == Water || has_enemy_tank(side, ex, ey));
 					ex += dx[t.dscDir], ey += dy[t.dscDir])
+
 				{
 					if (has_enemy_tank(side, ex, ey))//对面的敌方坦克找到了！
 					{
