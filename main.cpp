@@ -1076,6 +1076,237 @@ namespace TankGame
 	}
 	int temp_action[tankPerSide] = { Stay,Stay };
 	void Debug_Print_MinStep();
+
+	//每个坦克在决策处理时可能用到的一些高级属性，按需取用！
+	struct tagTankStatusAdv
+	{
+		//注意，以下三行变量是初步数据，即没有敌方坦克干扰时的情况
+		int numDscDir = 0;//min_step下降的方向数，包含了=0和=1的情况
+		//dsc表示descending
+		//若有这样的方向，以下变量有意义：
+		Action dscDir=Stay;//下降的方向（若有多个方向，随机取其中的一个）
+		int tx=0, ty=0;//移动或射击的目的地
+
+		//考虑双方坦克干扰
+		bool blocked = false;//是否被敌方坦克限制住了
+	};
+	tagTankStatusAdv tankStatusAdv[sideCount][tankPerSide];
+
+
+	//产生一个坦克在(x,y)处能射到的范围，结果写入arr数组，1表示能，0表示不能射到
+	//注意函数重载！！
+	void generate_shoot_range(int x, int y, int(*arr)[9])
+	{
+		//初始化
+		for (int i = 0; i < 9; i++)
+			for (int j = 0; j < 9; j++)
+				arr[i][j] = 0;
+		for (int t = 1;; t++)//向右找
+		{
+			if (!CoordValid(x + t, y)) break;
+			if (field->gameField[y][x + t] == None || field->gameField[y][x + t] == Water)
+				arr[y][x + t] = 1;
+			else
+				break;
+		}
+		for (int t = 1;; t++)//向左找
+		{
+			if (!CoordValid(x - t, y)) break;
+			if (field->gameField[y][x - t] == None || field->gameField[y][x - t] == Water)
+				arr[y][x - t] = 1;
+			else
+				break;
+		}
+		for (int t = 1;; t++)//向下找
+		{
+			if (!CoordValid(x, y + t)) break;
+			if (field->gameField[y + t][x] == None || field->gameField[y + t][x] == Water)
+				arr[y + t][x] = 1;
+			else
+				break;
+		}
+		for (int t = 1;; t++)//向上找
+		{
+			if (!CoordValid(x, y - t)) break;
+			if (field->gameField[y - t][x] == None || field->gameField[y - t][x] == Water)
+				arr[y - t][x] = 1;
+			else
+				break;
+		}
+	}
+	//产生在(x,y)处，在哪个范围里能射到(x,y)处，结果写入arr数组，1表示能，0表示不能被射到
+	//shot代表 被 射到
+	void generate_shot_range(int x, int y, int(*arr)[9])
+	{
+		//初始化
+		for (int i = 0; i < 9; i++)
+			for (int j = 0; j < 9; j++)
+				arr[i][j] = 0;
+		for (int t = 1;; t++)//向右找
+		{
+			if (!CoordValid(x + t, y)) break;
+			if (field->gameField[y][x + t] == None)
+				arr[y][x + t] = 1;
+			else if (field->gameField[y][x + t] == Water);//是水域的话循环继续，但不在arr中标记
+			else
+				break;
+		}
+		for (int t = 1;; t++)//向左找
+		{
+			if (!CoordValid(x - t, y)) break;
+			if (field->gameField[y][x - t] == None)
+				arr[y][x - t] = 1;
+			else if (field->gameField[y][x - t] == Water);
+			else
+				break;
+		}
+		for (int t = 1;; t++)//向下找
+		{
+			if (!CoordValid(x, y + t)) break;
+			if (field->gameField[y + t][x] == None)
+				arr[y + t][x] = 1;
+			else if (field->gameField[y + t][x] == Water);
+			else
+				break;
+		}
+		for (int t = 1;; t++)//向上找
+		{
+			if (!CoordValid(x, y - t)) break;
+			if (field->gameField[y - t][x] == None)
+				arr[y - t][x] = 1;
+			else if (field->gameField[y - t][x] == Water);
+			else
+				break;
+		}
+	}
+
+	//辅助函数：在(x,y)处是否有敌方（相对side方）坦克
+	bool has_enemy_tank(int side, int x, int y)
+	{
+		if (side == Red)
+			return (field->gameField[y][x] & Blue0) || (field->gameField[y][x] & Blue1);
+		if (side == Blue)
+			return (field->gameField[y][x] & Red0) || (field->gameField[y][x] & Red1);
+	}
+	void generate_adv_tank_status()
+	{
+		//先生成梯度下降方向相关数据
+		for (int side = 0; side < sideCount; side++)
+		{
+			for (int tank = 0; tank < tankPerSide; tank++)
+			{
+				for (int dir = 0; dir < 4; dir++)
+				{
+					int x = field->tankX[side][tank];
+					int y = field->tankY[side][tank];
+					int x1 = x + dx[dir];
+					int y1 = y + dy[dir];
+					if (!CoordValid(x1, y1)) continue;
+					if (min_step_to_base[side][y1][x1] == -1) continue;
+					if (min_step_to_base[side][y1][x1] < min_step_to_base[side][y][x])
+					{
+						tankStatusAdv[side][tank].numDscDir++;
+						tankStatusAdv[side][tank].dscDir = (Action)dir;
+						tankStatusAdv[side][tank].tx = x1;
+						tankStatusAdv[side][tank].ty = y1;
+					}
+				}
+			}
+		}
+		
+		//判断是否被敌方坦克卡住
+		for (int side = 0; side < sideCount; side++)
+		{
+			for (int tank = 0; tank < tankPerSide; tank++)
+			{
+				tagTankStatusAdv& t = tankStatusAdv[side][tank];
+				bool& blocked = tankStatusAdv[side][tank].blocked;
+
+				//卡住有两种情况
+				//第一种情况：我要走过去的空地在敌方坦克射程内
+				blocked = true;
+				//这有三个条件，1 我要走过去
+				blocked = blocked && (tankStatusAdv[side][tank].numDscDir == 1);
+				if(blocked) blocked = blocked && (field->gameField[t.ty][t.tx]==None);
+				//2 我现在的位置不再敌方射程之内（不然就不是被卡住，而是皇城PK了
+				int& x = field->tankX[side][tank];
+				int& y = field->tankY[side][tank];
+				if (blocked) blocked = blocked && (real_shot_range[side ^ 1][y][x] == 0.0f);
+				//3 目标位置在敌方射程之内
+				if (blocked) blocked = blocked && (real_shot_range[side ^ 1][t.ty][t.tx] > 0);
+				if (blocked) continue;
+
+				//第二种情况：我和敌方坦克只有一墙之隔，谁先射谁倒霉
+				blocked = true;
+				//这有两个条件，1 我有一堵要射的墙在我的最短路上
+				blocked = blocked && (tankStatusAdv[side][tank].numDscDir == 1);
+				if (blocked) blocked = blocked && (field->gameField[t.ty][t.tx] == Brick);
+				//2 墙的对面有一个敌方坦克
+				int ex = t.tx + dx[t.dscDir];
+				int ey = t.ty + dy[t.dscDir];//可能的敌人的位置
+				if (CoordValid(ex, ey))
+					if (blocked) blocked = blocked && has_enemy_tank(side, ex, ey);
+			}
+		}
+	}
+
+	void get_revising_defense_act(int tank, int enemyTank)
+	{
+		int mySide = field->mySide;
+		int enemySide = mySide ^ 1;
+
+		//我方防御坦克的位置
+		int x = field->tankX[mySide][tank];
+		int y = field->tankY[mySide][tank];
+		//敌方被防御坦克的位置 e-enemy
+		int ex = field->tankX[enemySide][tank];
+		int ey = field->tankY[enemySide][tank];
+		//敌方被防御坦克预计下一步要走到的位置 t-target
+		int etx = tankStatusAdv[enemySide][enemyTank].tx;
+		int ety = tankStatusAdv[enemySide][enemyTank].ty;
+
+		//防御有着几条条件。若不满足，则不修改通用AI已经做出的条件：
+		//1 敌方坦克不具唯一梯度下降方向，防御时机不好
+		if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
+			return;
+		//2 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
+		if (tankStatusAdv[mySide][tank].blocked)
+			return;
+		//3 如果现在的位置已经卡住对面了，那就不管了
+		if (tankStatusAdv[enemySide][enemyTank].blocked)
+			return;
+
+		//核心
+		//这个数组表示有哪些位置能卡住enemyTank，用01表示
+		int blocking_range[9][9];
+		memset(blocking_range, 0, sizeof(blocking_range));
+		//注意，现在走的一步是为了下一步卡住敌方坦克，所以计算的是(etx,ety)位置的blocking-range.
+		//能卡住敌方坦克，有两种情况：
+		//1 能射到 (etx,ety) 的位置 
+		generate_shot_range(etx, ety, blocking_range);
+		//2 两个坦克一墙之隔，谁先射墙谁马上倒霉
+		if (field->gameField[ety][etx] == Brick)
+		{
+			int tx = 2 * etx - ex;//墙对面的位置
+			int ty = 2 * ety - ey;
+			if (CoordValid(tx, ty))
+				if (field->gameField[ty][tx] == None)
+					blocking_range[ty][tx] = 1;
+		}
+
+		//得到了blocking_range，然后做进一步决策
+		for (int dir = 0; dir < 4; dir++)
+		{
+			//四周四个方向
+			int tx = x + dx[dir];
+			int ty = y + dy[dir];
+			//若往那个方向走能卡住敌方坦克，则改变策略，进行防御
+			if (blocking_range[ty][tx])
+				my_action[tank] = (Action)dir;
+		}
+	}
+
+	
 	//决策前的预处理
 	void pre_process()
 	{
@@ -1086,6 +1317,9 @@ namespace TankGame
 		generate_shot_range(1);
 		generate_shot_range(0, false);
 		generate_shot_range(1, false);
+
+		generate_adv_tank_status();
+
 		Debug_Print_MinStep();
 	}
 
@@ -1202,6 +1436,7 @@ namespace TankGame
 		//↑先把合法的弄成非负
 
 		bool stay_for_beat = false;
+		//若在敌方伪射程之内
 		if (shot_range[side ^ 1][tx][ty] > 0) {
 			int ans = Stay, tid = -1, etx = 0, ety = 0;
 			// 不要怂 直接刚 看看是哪个方向
@@ -1441,8 +1676,6 @@ namespace TankGame
 		my_action[tank_id] = ans;
 
 
-
-
 		shot_dir = IsUniqueDir(side, tx, ty);
 		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是射击，则方案+4
 		else if (min_step_to_base[side][tx][ty] < min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
@@ -1580,8 +1813,22 @@ int main()
 	TankGame::generate_shot_range(1);
 	TankGame::get_stupid_action(1);
 	for (int i = 0; i < TankGame::tankPerSide; i++) {
-		if (TankGame::my_action[i] == Stay && TankGame::temp_action[i] != Stay && TankGame::GetRandom() < 0.9)
+		if (TankGame::my_action[i] == TankGame::Action::Stay && 
+			TankGame::temp_action[i] != TankGame::Action::Stay && 
+			TankGame::GetRandom() < 0.9)
 			TankGame::my_action[i] = TankGame::temp_action[i];
+	}
+
+	//防御决策
+	//这里有两个点要注意：
+	//1 默认是同一边的坦克进行防御，不会跨边进行防御
+	//2 目前，进行防御决策的条件是我方坦克到敌方基地的距离，严格大于，敌方（同边）坦克到我方基地的距离
+	//这里可以修改。
+	int mySide = TankGame::field->mySide;
+	for (int tank = 0; tank < TankGame::tankPerSide; tank++)
+	{
+		if (TankGame::min_step_to_base[mySide][tank] > TankGame::min_step_to_base[mySide ^ 1][tank])
+			TankGame::get_revising_defense_act(tank, tank);//防御同边坦克
 	}
 
 	//lcj: ?????
