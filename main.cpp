@@ -1386,10 +1386,10 @@ namespace TankGame
 		//1 敌方坦克不具唯一梯度下降方向，防御时机不好
 		if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
 			return;
-		//2 如果现在的位置已经卡住对面了，那就把action改成Stay，持续卡住对面
+		//2 如果现在的位置已经卡住对面了，那就不管了
 		if (tankStatusAdv[enemySide][enemyTank].blocked)
 		{
-			my_action[tank] = Stay;
+			//my_action[tank] = Stay;
 			return;
 		}
 		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
@@ -1405,7 +1405,37 @@ namespace TankGame
 		int blocking_range[9][9];
 		memset(blocking_range, 0, sizeof(blocking_range));
 		//注意，现在走的一步是为了下一步卡住敌方坦克，所以计算的是地方坦克路径上的位置的blocking-range.
-		//能卡住敌方坦克，有两种情况：
+		//能卡住敌方坦克，有这几种种情况：
+
+		//如果能在一步之遥之内卡住敌方坦克，那最好
+		//1 能把对面坦克简单地卡住（一步之内）
+		generate_shot_range(etx,ety, blocking_range);
+	
+		//2 两个坦克一墙之隔，谁先射墙谁马上倒霉
+		if (field->gameField[ety][etx] == Brick)
+		{
+			int tx = 2 * etx - ex;//墙对面的位置
+			int ty = 2 * ety - ey;
+			if (CoordValid(tx, ty))
+				if (field->gameField[ty][tx] == None)
+					blocking_range[ty][tx] = 1;
+		}
+		for (int dir = 0; dir < 4; dir++)
+		{
+			//四周四个方向
+			int tx = x + dx[dir];
+			int ty = y + dy[dir];
+			if (!CoordValid(tx, ty)) continue;
+			//若往那个方向走最能卡住敌方坦克，则改变策略，进行防御
+			if (blocking_range[ty][tx])
+			{
+				my_action[tank] = (Action)std2sca(dir);
+			}
+		}
+
+
+		//一步之内卡不到，则考虑后面几步
+		memset(blocking_range, 0, sizeof(blocking_range));
 		//1 能射到路径上某一点的位置 
 		for (int i = 0; i < 9; i++)
 		{
@@ -1426,17 +1456,6 @@ namespace TankGame
 				}
 			}
 		}
-	
-		//2 两个坦克一墙之隔，谁先射墙谁马上倒霉
-		if (field->gameField[ety][etx] == Brick)
-		{
-			int tx = 2 * etx - ex;//墙对面的位置
-			int ty = 2 * ety - ey;
-			if (CoordValid(tx, ty))
-				if (field->gameField[ty][tx] == None)
-					blocking_range[ty][tx] = 1;
-		}
-
 		int best_dir = -1;
 		int best_blocking_range = 0;
 		//得到了blocking_range，然后做进一步决策
@@ -2043,7 +2062,7 @@ int main()
 	//防御决策
 	//这里有两个点要注意：
 	//1 默认是同一边的坦克进行防御，不会跨边进行防御
-	//2 目前，进行防御决策的条件是我方坦克到敌方基地的距离，严格大于，敌方（同边）坦克到我方基地的距离；且地方坦克存活
+	//2 目前，进行防御决策的条件是我方坦克到敌方基地的距离，比，敌方（同边）坦克到我方基地的距离，至少大2；且地方坦克存活
 	//这里可以修改。
 	int mySide = TankGame::field->mySide;
 	for (int tank = 0; tank < TankGame::tankPerSide; tank++)
@@ -2053,7 +2072,7 @@ int main()
 		int ex = TankGame::field->tankX[mySide ^ 1][tank ^ 1];
 		int ey = TankGame::field->tankY[mySide ^ 1][tank ^ 1];
 		if (TankGame::field->tankAlive[mySide ^ 1][tank] &&
-			TankGame::min_step_to_base[mySide][y][x] > TankGame::min_step_to_base[mySide ^ 1][ey][ex])
+			TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
 			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 	}
 
