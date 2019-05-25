@@ -1521,13 +1521,16 @@ namespace TankGame
 						int etx = field->tankY[side ^ 1][i] + next_step[shot_dir][0], ety = field->tankX[side ^ 1][i] + next_step[shot_dir][1];
 						if (etx == tx) shot_dir = ety < ty ? 3 : 2;
 						else shot_dir = etx < tx ? 1 : 0;
-						temp_action[tank_id] = shot_dir + 4;;
-						if (min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][field->tankY[side ^ 1][i]][field->tankX[side ^ 1][i]]
+						temp_action[tank_id] = shot_dir + 4;
+						my_action[tank_id] = shot_dir + 4;
+						if (shoot_friend(side, tank_id, fx, fy))
+						{
+							my_action[tank_id] = -2; temp_action[tank_id] = -1;
+						}
+						//↑上面是友军重新决策，现已修改
+						//↓下方增加了一个else
+						else if (min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][field->tankY[side ^ 1][i]][field->tankX[side ^ 1][i]]
 							|| GetRandom() <= 0.1) {
-							
-							my_action[tank_id] = shot_dir + 4;
-							if (shoot_friend(side, tank_id, fx, fy))
-								get_stupid_action(tank_id ^ 1);
 							if ((fx != tx || fy != ty) || my_action[tank_id] != my_action[tank_id ^ 1])
 								if (min_step_to_base[side][fx][fy] + (my_action[tank_id^1]>=0 && my_action[tank_id]<=3)
 									<= min_step_to_base[side ^ 1][field->tankY[side ^ 1][i ^ 1]][field->tankX[side ^ 1][i ^ 1]]) {
@@ -1707,10 +1710,12 @@ namespace TankGame
 			while (shot_weight[ans] < GetRandom() && try_max_count) {
 				try_max_count--;
 			}
-			if (!try_max_count)
+			if (!try_max_count) {
 				my_action[tank_id] = Stay;
-			else
+			}
+			else{
 				my_action[tank_id] += 4;
+			}
 		}
 		else if (min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] >= min_step_to_base[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]]) {
 			int side_num;
