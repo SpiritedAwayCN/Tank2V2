@@ -1385,7 +1385,7 @@ namespace TankGame
 				if (min_path[enemySide][enemyTank][i][j])//对 敌方坦克路径上的每一点，找能将其卡住的位置
 				{
 					int tmp[9][9];
-					generate_shot_range(etx, ety, tmp);
+					generate_shot_range(i, j, tmp);
 					for (int ii = 0; ii < 9; ii++)
 					{
 						for (int jj = 0; jj < 9; jj++)
@@ -1397,7 +1397,7 @@ namespace TankGame
 				}
 			}
 		}
-		generate_shot_range(etx, ety, blocking_range);
+	
 		//2 两个坦克一墙之隔，谁先射墙谁马上倒霉
 		if (field->gameField[ety][etx] == Brick)
 		{
@@ -1413,9 +1413,10 @@ namespace TankGame
 		//得到了blocking_range，然后做进一步决策
 		for (int dir = 0; dir < 4; dir++)
 		{
-			//四周四个方向
+				//四周四个方向
 			int tx = x + dx[dir];
 			int ty = y + dy[dir];
+			if (!CoordValid(tx, ty)) continue;
 			//若往那个方向走最有可能（在未来的某一回合）能卡住敌方坦克，则改变策略，进行防御
 			if (blocking_range[ty][tx] > best_blocking_range)
 				best_dir = dir;
@@ -1437,6 +1438,7 @@ namespace TankGame
 			//四周四个方向
 			int tx = x + dx[dir];
 			int ty = y + dy[dir];
+			if (!CoordValid(tx, ty)) continue;
 			//若往那个方向走最有可能（在未来的某一回合）能挡住敌方坦克，则改变策略，进行防御
 			if (min_path[enemySide][enemyTank][ty][tx])
 			{
@@ -2009,8 +2011,12 @@ int main()
 	int mySide = TankGame::field->mySide;
 	for (int tank = 0; tank < TankGame::tankPerSide; tank++)
 	{
+		int x = TankGame::field->tankX[mySide][tank];
+		int y = TankGame::field->tankY[mySide][tank];
+		int ex = TankGame::field->tankX[mySide ^ 1][tank ^ 1];
+		int ey = TankGame::field->tankY[mySide ^ 1][tank ^ 1];
 		if (TankGame::field->tankAlive[mySide ^ 1][tank] &&
-			TankGame::min_step_to_base[mySide][tank] > TankGame::min_step_to_base[mySide ^ 1][tank ^ 1])
+			TankGame::min_step_to_base[mySide][y][x] > TankGame::min_step_to_base[mySide ^ 1][ey][ex])
 			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 	}
 
