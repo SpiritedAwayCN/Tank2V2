@@ -13,6 +13,7 @@
 #include <queue>
 #include <iomanip>
 #include <algorithm>
+#include <sstream>
 #ifdef _BOTZONE_ONLINE
 #include "jsoncpp/json.h"
 #else
@@ -31,6 +32,7 @@ using std::pair;
 using std::make_pair;
 using std::min;
 using std::max;
+using std::stringstream;
 //这个是自写的
 const int next_step[4][2] = { {1,0},{-1,0},{0,1},{0,-1} };
 
@@ -1089,6 +1091,8 @@ namespace TankGame
 
 		//考虑双方坦克干扰
 		bool blocked = false;//是否被敌方坦克限制住了
+		int consecutive_blocked_terms = 0;//截至上一回合决策结束时，这一坦克被敌方坦克连续卡住的回合数
+		//只在blocked=true时有效；只在我方坦克上有意义；其维护利用了data字段
 	};
 	tagTankStatusAdv tankStatusAdv[sideCount][tankPerSide];
 
@@ -1247,6 +1251,18 @@ namespace TankGame
 				if (CoordValid(ex, ey))
 					if (blocked) blocked = blocked && has_enemy_tank(side, ex, ey);
 			}
+			
+
+		}
+
+		//更新consecuteve_blocked_terms字段
+		int mySide = field->mySide;
+		for (int tank = 0; tank < tankPerSide; tank++)
+		{
+			if (tankStatusAdv[mySide][tank].blocked)
+				tankStatusAdv[mySide][tank].consecutive_blocked_terms++;
+			else
+				tankStatusAdv[mySide][tank].consecutive_blocked_terms = 0;
 		}
 	}
 
@@ -1306,7 +1322,19 @@ namespace TankGame
 		}
 	}
 
-	
+	void decode_data(string data)
+	{
+		stringstream ss{ data };
+		for (int tank = 0; tank < tankPerSide; tank++)
+			ss >> tankStatusAdv[field->mySide][tank].consecutive_blocked_terms;
+	}
+	void encode_data(string& data)
+	{
+		stringstream ss;
+		ss << tankStatusAdv[field->mySide][0].consecutive_blocked_terms;
+		ss << tankStatusAdv[field->mySide][1].consecutive_blocked_terms;
+		data = ss.str();
+	}
 	//决策前的预处理
 	void pre_process()
 	{
@@ -1808,6 +1836,7 @@ int main()
 
 	//初始化随机种子
 	srand((unsigned)time(nullptr));
+	TankGame::decode_data(data);
 
 	//预处理，包含了bfs等
 	TankGame::pre_process();
@@ -1853,5 +1882,6 @@ int main()
 	}
 
 	//输出，结束
-	TankGame::SubmitAndExit(act0, act1);
+	TankGame::encode_data(data);
+	TankGame::SubmitAndExit(act0, act1, "", data);
 }
