@@ -1327,6 +1327,12 @@ namespace TankGame
 			return act + 4;
 		}
 	}
+	void _add_arr(int(*added)[9], int(*add)[9])
+	{
+		for (int i = 0; i < 9; i++)
+			for (int j = 0; j < 9; j++)
+				added[i][j] = added[i][j] + add[i][j];
+	}
 	void get_revising_defense_act(int tank, int enemyTank)
 	{
 		int mySide = field->mySide;
@@ -1357,9 +1363,28 @@ namespace TankGame
 		//这个数组表示有哪些位置能卡住enemyTank，用01表示
 		int blocking_range[9][9];
 		memset(blocking_range, 0, sizeof(blocking_range));
-		//注意，现在走的一步是为了下一步卡住敌方坦克，所以计算的是(etx,ety)位置的blocking-range.
+		//注意，现在走的一步是为了下一步卡住敌方坦克，所以计算的是地方坦克路径上的位置的blocking-range.
 		//能卡住敌方坦克，有两种情况：
-		//1 能射到 (etx,ety) 的位置 
+		//1 能射到路径上某一点的位置 
+		for (int i = 0; i < 9; i++)
+		{
+			for (int j = 0; j < 9; j++)
+			{
+				if (min_path[enemySide][enemyTank][i][j])//对 敌方坦克路径上的每一点，找能将其卡住的位置
+				{
+					int tmp[9][9];
+					generate_shot_range(etx, ety, tmp);
+					for (int ii = 0; ii < 9; ii++)
+					{
+						for (int jj = 0; jj < 9; jj++)
+						{
+							tmp[ii][jj] *= min_path[enemySide][enemyTank][i][j];//加上一些权重
+						}
+					}
+					_add_arr(blocking_range, tmp);
+				}
+			}
+		}
 		generate_shot_range(etx, ety, blocking_range);
 		//2 两个坦克一墙之隔，谁先射墙谁马上倒霉
 		if (field->gameField[ety][etx] == Brick)
@@ -1371,16 +1396,21 @@ namespace TankGame
 					blocking_range[ty][tx] = 1;
 		}
 
+		int best_dir = -1;
+		int best_blocking_range = 0;
 		//得到了blocking_range，然后做进一步决策
 		for (int dir = 0; dir < 4; dir++)
 		{
 			//四周四个方向
 			int tx = x + dx[dir];
 			int ty = y + dy[dir];
-			//若往那个方向走能卡住敌方坦克，则改变策略，进行防御
-			if (blocking_range[ty][tx])
-				my_action[tank] = (Action)std2sca(dir);
+			//若往那个方向走最有可能（在未来的某一回合）能卡住敌方坦克，则改变策略，进行防御
+			if (blocking_range[ty][tx] > best_blocking_range)
+				best_dir = dir;
+				
 		}
+		if (best_dir != -1)
+			my_action[tank] = (Action)std2sca(best_dir);
 	}
 
 	void decode_data(string data)
