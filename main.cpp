@@ -1155,8 +1155,11 @@ namespace TankGame
 			if (field->gameField[y][x + t] == None)
 				arr[y][x + t] = 1;
 			else if (field->gameField[y][x + t] == Water);//是水域的话循环继续，但不在arr中标记
-			else
+			else 
+			{
+				
 				break;
+			}
 		}
 		for (int t = 1;; t++)//向左找
 		{
@@ -1164,8 +1167,12 @@ namespace TankGame
 			if (field->gameField[y][x - t] == None)
 				arr[y][x - t] = 1;
 			else if (field->gameField[y][x - t] == Water);
-			else
+			else 
+			{
+				
 				break;
+			}
+				
 		}
 		for (int t = 1;; t++)//向下找
 		{
@@ -1173,8 +1180,10 @@ namespace TankGame
 			if (field->gameField[y + t][x] == None)
 				arr[y + t][x] = 1;
 			else if (field->gameField[y + t][x] == Water);
-			else
+			else 
+			{
 				break;
+			}
 		}
 		for (int t = 1;; t++)//向上找
 		{
@@ -1182,8 +1191,11 @@ namespace TankGame
 			if (field->gameField[y - t][x] == None)
 				arr[y - t][x] = 1;
 			else if (field->gameField[y - t][x] == Water);
-			else
+			else 
+			{
+				
 				break;
+			}
 		}
 	}
 
@@ -1410,7 +1422,52 @@ namespace TankGame
 				
 		}
 		if (best_dir != -1)
+		{
 			my_action[tank] = (Action)std2sca(best_dir);
+			return;
+		}
+
+		//还有一手：如果找不到能提前卡住敌方坦克的地方，那就往地方坦克的最短路上走，挡差
+		best_dir = -1;
+		int best_my_value = 0x7fffff;
+		int best_enemy_value = 0;
+		//得到了blocking_range，然后做进一步决策
+		for (int dir = 0; dir < 4; dir++)
+		{
+			//四周四个方向
+			int tx = x + dx[dir];
+			int ty = y + dy[dir];
+			//若往那个方向走最有可能（在未来的某一回合）能挡住敌方坦克，则改变策略，进行防御
+			if (min_path[enemySide][enemyTank][ty][tx])
+			{
+				//同时，如果也能减小我离敌方基地距离，那更好
+				if (min_step_to_base[mySide][ty][tx] < best_my_value)
+				{
+					best_dir = dir;
+					best_my_value = min_step_to_base[mySide][ty][tx];
+					best_enemy_value = min_path[enemySide][enemyTank][ty][tx];
+				}
+				else if (min_step_to_base[mySide][ty][tx] = best_my_value)
+				{//往更有可能把对面挡住的方向走
+					if (min_path[enemySide][enemyTank][ty][tx] > best_enemy_value)
+					{
+						best_dir = dir;
+						best_my_value = min_step_to_base[mySide][ty][tx];
+						best_enemy_value = min_path[enemySide][enemyTank][ty][tx];
+					}
+				}
+			}
+
+		}
+		if (best_dir != -1)
+		{
+			int tx = x + dx[best_dir];
+			int ty = y + dy[best_dir];
+			if (field->gameField[ty][tx] == Brick)//注意，这里可能需要射击
+				best_dir += 4;
+			my_action[tank] = (Action)std2sca(best_dir);
+			return;
+		}
 	}
 
 	void decode_data(string data)
