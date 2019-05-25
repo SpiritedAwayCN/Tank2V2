@@ -1368,18 +1368,19 @@ namespace TankGame
 		//1 敌方坦克不具唯一梯度下降方向，防御时机不好
 		if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
 			return;
-		//2 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
-		if (tankStatusAdv[mySide][tank].blocked)
-			return;
-		//额外特判：如果现在有生命危险...那还是交给能保命的通用AI吧（这来自于某个bug）
-		if (real_shot_range[enemySide][y][x] > 0.0f)
-			return;
-		//3 如果现在的位置已经卡住对面了，那就把action改成Stay，持续卡住对面
+		//2 如果现在的位置已经卡住对面了，那就把action改成Stay，持续卡住对面
 		if (tankStatusAdv[enemySide][enemyTank].blocked)
 		{
 			my_action[tank] = Stay;
 			return;
 		}
+		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
+		if (tankStatusAdv[mySide][tank].blocked)
+			return;
+		//额外特判：如果现在有生命危险...那还是交给能保命的通用AI吧（这来自于某个bug）
+		if (real_shot_range[enemySide][y][x] > 0.0f)
+			return;
+		
 
 		//核心
 		//这个数组表示有哪些位置能卡住enemyTank，用01表示
