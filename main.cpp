@@ -1287,7 +1287,8 @@ namespace TankGame
 							//找到那边那辆敌方坦克具体是哪辆？
 							if (field->tankX[side ^ 1][enemyTank] == ex && field->tankY[side ^ 1][enemyTank] == ey)
 							{
-								if (tankStatusAdv[side ^ 1][enemyTank].fireable)
+								//if (tankStatusAdv[side ^ 1][enemyTank].fireable)
+								if(true)//某个愚蠢的bug
 								{
 									dangerousEnemyBehindWall = true;
 									goto _tmp_finished;
