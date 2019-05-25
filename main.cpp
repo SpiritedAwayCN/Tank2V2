@@ -1240,6 +1240,7 @@ namespace TankGame
 						tankStatusAdv[side][tank].ty = y1;
 					}
 				}
+			
 			}
 		}
 		
@@ -1373,9 +1374,12 @@ namespace TankGame
 		//额外特判：如果现在有生命危险...那还是交给能保命的通用AI吧（这来自于某个bug）
 		if (real_shot_range[enemySide][y][x] > 0.0f)
 			return;
-		//3 如果现在的位置已经卡住对面了，那就不管了
+		//3 如果现在的位置已经卡住对面了，那就把action改成Stay，持续卡住对面
 		if (tankStatusAdv[enemySide][enemyTank].blocked)
+		{
+			my_action[tank] = Stay;
 			return;
+		}
 
 		//核心
 		//这个数组表示有哪些位置能卡住enemyTank，用01表示
