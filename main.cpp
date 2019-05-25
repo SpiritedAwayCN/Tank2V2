@@ -1409,7 +1409,8 @@ namespace TankGame
 
 		//如果能在一步之遥之内卡住敌方坦克，那最好
 		//1 能把对面坦克简单地卡住（一步之内）
-		generate_shot_range(etx,ety, blocking_range);
+		if(etx!=4)//中线特判：如果对面已经到我方中线上了...那就不卡移动位置了，因为卡不住，对面直接推家就好了
+			generate_shot_range(etx,ety, blocking_range);
 	
 		//2 两个坦克一墙之隔，谁先射墙谁马上倒霉
 		if (field->gameField[ety][etx] == Brick)
@@ -1441,6 +1442,7 @@ namespace TankGame
 		{
 			for (int j = 0; j < 9; j++)
 			{
+				if (j == 4) continue;//同理，中线特判
 				if (min_path[enemySide][enemyTank][i][j])//对 敌方坦克路径上的每一点，找能将其卡住的位置
 				{
 					int tmp[9][9];
