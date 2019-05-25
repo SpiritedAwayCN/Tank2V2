@@ -1102,6 +1102,7 @@ namespace TankGame
 
 	//产生一个坦克在(x,y)处能射到的范围，结果写入arr数组，1表示能，0表示不能射到
 	//注意函数重载！！
+	bool has_tank(int, int);
 	void generate_shoot_range(int x, int y, int(*arr)[9])
 	{
 		//初始化
