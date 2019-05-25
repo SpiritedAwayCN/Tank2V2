@@ -777,7 +777,7 @@ namespace TankGame
 
 	inline bool IsTank(FieldItem item, bool IgnoreMulty = true) {
 		if (!IgnoreMulty && HasMultipleTank(item)) return true;
-		return item >= Blue0 && item < Water;
+		return item == Blue0 || item==Red0 || item==Blue1 || item==Blue0;
 	}
 
 	inline Action Get_My_Action(int my_dir, bool shoot) {
@@ -1603,7 +1603,7 @@ namespace TankGame
 									int tid = GetTankID(field->gameField[uc][ty + bias]);
 									if (min_step_to_base[side ^ 1][wi][wj]<=min_step_to_base[side^1][uc][ty+bias]
 										/*&& !(field->previousActions[field->currentTurn - 1][side^1][tid] > Left)*/ && cnt == 0
-										&& min_step_to_base[side][tx][ty]>= min_step_to_base[side ^ 1][uc][ty + bias]) {
+										&& min_step_to_base[side][tx][ty] + 2>= min_step_to_base[side ^ 1][uc][ty + bias]) {
 										//预判 守株待兔 准备反杀（目前不完善）
 										//shot_weight[dir] = 0;
 										//break;
@@ -1622,7 +1622,7 @@ namespace TankGame
 									int tid = GetTankID(field->gameField[tx + bias][uc]);
 									if (min_step_to_base[side ^ 1][wi][wj]<=min_step_to_base[side ^ 1][tx + bias][uc]
 										/*&& !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)*/ && cnt==0
-										&& min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][tx + bias][uc]) {
+										&& min_step_to_base[side][tx][ty] + 2 >= min_step_to_base[side ^ 1][tx + bias][uc]) {
 										// 预判 守株待兔 准备反杀（目前不完善）
 										shot_weight[dir] = 0;
 										break;
