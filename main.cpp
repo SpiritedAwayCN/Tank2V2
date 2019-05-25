@@ -779,7 +779,7 @@ namespace TankGame
 
 	inline bool IsTank(FieldItem item, bool IgnoreMulty = true) {
 		if (!IgnoreMulty && HasMultipleTank(item)) return true;
-		return item == Blue0 || item==Red0 || item==Blue1 || item==Blue0;
+		return item == Blue0 || item==Red0 || item==Blue1 || item==Red1;
 	}
 
 	inline Action Get_My_Action(int my_dir, bool shoot) {
@@ -1594,7 +1594,7 @@ namespace TankGame
 				}
 				my_action[tank_id] = ans2; return my_action[tank_id];
 			}
-			else if(real_shot_range[side^1][tx][ty]==0 && min_step_to_base[side][tx][ty] >= min_step_to_base[side][etx][ety]){
+			else if(real_shot_range[side^1][tx][ty]==0 && min_step_to_base[side][tx][ty] >= min_step_to_base[side][etx][ety] && !force_move_mode){
 				stay_for_beat = true;
 			}
 			
