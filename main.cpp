@@ -1089,6 +1089,9 @@ namespace TankGame
 		Action dscDir=Stay;//下降的方向（若有多个方向，随机取其中的一个）
 		int tx=0, ty=0;//移动或射击的目的地
 
+		//这回合能否射击
+		bool fireable = true;
+
 		//考虑双方坦克干扰
 		bool blocked = false;//是否被敌方坦克限制住了
 		int consecutive_blocked_terms = 0;//截至上一回合决策结束时，这一坦克被敌方坦克连续卡住的回合数
@@ -1194,6 +1197,16 @@ namespace TankGame
 	}
 	void generate_adv_tank_status()
 	{
+		//本回合是否能射击
+		for (int side = 0; side < sideCount; side++)
+		{
+			for (int tank = 0; tank < tankPerSide; tank++)
+			{
+				tankStatusAdv[side][tank].fireable =
+					!(field->previousActions[field->currentTurn - 1][side][tank] > Left);
+			}
+
+		}
 		//先生成梯度下降方向相关数据
 		for (int side = 0; side < sideCount; side++)
 		{
@@ -1231,7 +1244,7 @@ namespace TankGame
 				blocked = true;
 				//这有三个条件，1 我要走过去
 				blocked = blocked && (tankStatusAdv[side][tank].numDscDir == 1);
-				if(blocked) blocked = blocked && (field->gameField[t.ty][t.tx]==None);
+				if (blocked) blocked = blocked && (field->gameField[t.ty][t.tx] == None);
 				//2 我现在的位置不再敌方射程之内（不然就不是被卡住，而是皇城PK了
 				int& x = field->tankX[side][tank];
 				int& y = field->tankY[side][tank];
@@ -1245,14 +1258,33 @@ namespace TankGame
 				//这有两个条件，1 我有一堵要射的墙在我的最短路上
 				blocked = blocked && (tankStatusAdv[side][tank].numDscDir == 1);
 				if (blocked) blocked = blocked && (field->gameField[t.ty][t.tx] == Brick);
-				//2 墙的对面有一个敌方坦克
+				//2 墙的后面有一个敌方坦克——大约等价于，这堵墙在地方射程范围内
 				int ex = t.tx + dx[t.dscDir];
 				int ey = t.ty + dy[t.dscDir];//可能的敌人的位置
-				if (CoordValid(ex, ey))
-					if (blocked) blocked = blocked && has_enemy_tank(side, ex, ey);
+				bool dangerousEnemyBehindWall = false;
+				//找对面的地方坦克
+				for (; CoordValid(ex, ey) && (field->gameField[ey][ex] == None || field->gameField[ey][ex] == Water);
+					ex += dx[t.dscDir], ey += dy[t.dscDir])
+				{
+					if (has_enemy_tank(side, ex, ey))//对面的敌方坦克找到了！
+					{
+						for (int enemyTank = 0; enemyTank < tankPerSide; enemyTank++)
+						{
+							//找到那边那辆敌方坦克具体是哪辆？
+							if (field->tankX[side ^ 1][enemyTank] == ex && field->tankY[side ^ 1][enemyTank] == ey)
+							{
+								if (tankStatusAdv[side ^ 1][enemyTank].fireable)
+								{
+									dangerousEnemyBehindWall = true;
+									goto _tmp_finished;
+								}
+							}
+						}
+					}
+				}
+			_tmp_finished:
+				blocked = blocked && dangerousEnemyBehindWall;
 			}
-			
-
 		}
 
 		//更新consecuteve_blocked_terms字段
@@ -1885,12 +1917,13 @@ int main()
 	//防御决策
 	//这里有两个点要注意：
 	//1 默认是同一边的坦克进行防御，不会跨边进行防御
-	//2 目前，进行防御决策的条件是我方坦克到敌方基地的距离，严格大于，敌方（同边）坦克到我方基地的距离
+	//2 目前，进行防御决策的条件是我方坦克到敌方基地的距离，严格大于，敌方（同边）坦克到我方基地的距离；且地方坦克存活
 	//这里可以修改。
 	int mySide = TankGame::field->mySide;
 	for (int tank = 0; tank < TankGame::tankPerSide; tank++)
 	{
-		if (TankGame::min_step_to_base[mySide][tank] > TankGame::min_step_to_base[mySide ^ 1][tank])
+		if (TankGame::field->tankAlive[mySide^1][tank] &&
+			TankGame::min_step_to_base[mySide][tank] > TankGame::min_step_to_base[mySide ^ 1][tank])
 			TankGame::get_revising_defense_act(tank, tank);//防御同边坦克
 	}
 
