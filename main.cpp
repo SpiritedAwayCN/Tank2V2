@@ -1721,8 +1721,8 @@ namespace TankGame
 									shot_weight[dir] *= min_step_to_base[side ^ 1][uc][ty + bias] >= min_step_to_base[side ^ 1][uc][ty] ? 0 : 0.9;
 									int tid = GetTankID(field->gameField[uc][ty + bias]);
 									if (min_step_to_base[side ^ 1][wi][wj]<=min_step_to_base[side^1][uc][ty+bias]
-										/*&& !(field->previousActions[field->currentTurn - 1][side^1][tid] > Left)*/ && cnt == 0
-										&& min_step_to_base[side][tx][ty] + 2>= min_step_to_base[side ^ 1][uc][ty + bias]) {
+										/*&& !(field->previousActions[field->currentTurn - 1][side^1][tid] > Left) && cnt == 0*/
+										/*&& min_step_to_base[side][tx][ty] + 2>= min_step_to_base[side ^ 1][uc][ty + bias]*/) {
 										//预判 守株待兔 准备反杀（目前不完善）
 										//shot_weight[dir] = 0;
 										//break;
@@ -1740,8 +1740,8 @@ namespace TankGame
 									shot_weight[dir] *= min_step_to_base[side ^ 1][tx + bias][uc] >= min_step_to_base[side ^ 1][tx][uc] ? 0 : 0.9;
 									int tid = GetTankID(field->gameField[tx + bias][uc]);
 									if (min_step_to_base[side ^ 1][wi][wj]<=min_step_to_base[side ^ 1][tx + bias][uc]
-										/*&& !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)*/ && cnt==0
-										&& min_step_to_base[side][tx][ty] + 2 >= min_step_to_base[side ^ 1][tx + bias][uc]) {
+										/*&& !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left) && cnt==0
+										&& min_step_to_base[side][tx][ty] + 2 >= min_step_to_base[side ^ 1][tx + bias][uc] */) {
 										// 预判 守株待兔 准备反杀（目前不完善）
 										shot_weight[dir] = 0;
 										break;
