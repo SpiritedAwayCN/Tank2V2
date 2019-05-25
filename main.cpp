@@ -1114,7 +1114,10 @@ namespace TankGame
 			if (field->gameField[y][x + t] == None || field->gameField[y][x + t] == Water)
 				arr[y][x + t] = 1;
 			else
+			{
+				if (has_tank(x + t, y)) arr[y][x + t] = 1;
 				break;
+			}
 		}
 		for (int t = 1;; t++)//向左找
 		{
@@ -1122,7 +1125,10 @@ namespace TankGame
 			if (field->gameField[y][x - t] == None || field->gameField[y][x - t] == Water)
 				arr[y][x - t] = 1;
 			else
+			{
+				if (has_tank(x - t, y)) arr[y][x - t] = 1;
 				break;
+			}
 		}
 		for (int t = 1;; t++)//向下找
 		{
@@ -1130,7 +1136,10 @@ namespace TankGame
 			if (field->gameField[y + t][x] == None || field->gameField[y + t][x] == Water)
 				arr[y + t][x] = 1;
 			else
+			{
+				if (has_tank(x, y + t)) arr[y + t][x] = 1;
 				break;
+			}
 		}
 		for (int t = 1;; t++)//向上找
 		{
@@ -1138,7 +1147,10 @@ namespace TankGame
 			if (field->gameField[y - t][x] == None || field->gameField[y - t][x] == Water)
 				arr[y - t][x] = 1;
 			else
+			{
+				if (has_tank(x, y - t)) arr[y - t][x] = 1;
 				break;
+			}
 		}
 	}
 	//产生在(x,y)处，在哪个范围里能射到(x,y)处，结果写入arr数组，1表示能，0表示不能被射到
@@ -1206,6 +1218,11 @@ namespace TankGame
 			return (field->gameField[y][x] & Blue0) || (field->gameField[y][x] & Blue1);
 		if (side == Blue)
 			return (field->gameField[y][x] & Red0) || (field->gameField[y][x] & Red1);
+	}
+	bool has_tank(int x, int y)
+	{
+		return (field->gameField[y][x] & Blue0) || (field->gameField[y][x] & Blue1)
+			|| (field->gameField[y][x] & Red0) || (field->gameField[y][x] & Red1);
 	}
 	void generate_adv_tank_status()
 	{
