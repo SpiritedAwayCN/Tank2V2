@@ -1442,6 +1442,11 @@ namespace TankGame
 		}
 
 		//还有一手：如果找不到能提前卡住敌方坦克的地方，那就往地方坦克的最短路上走，挡差
+		//经验证明，这一手最好在还没开打的时候弄...不然打起来了再玩这个实在是过于愚蠢
+		//参考：https://www.botzone.org.cn/match/5ce988e3d2337e01c7aca364
+		//判断交火：我方坦克与敌方坦克互相在射程中
+		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f) return;
+
 		best_dir = -1;
 		int best_my_value = 0x7fffff;
 		int best_enemy_value = 0;
