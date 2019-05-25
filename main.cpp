@@ -1773,7 +1773,7 @@ namespace TankGame
 		else if (min_step_to_base[side][tx][ty] < min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]] + 0.1 + 0.1 * GetRandom())
 			my_action[tank_id] = Stay; //不在射程内且行动后最短路变大，则改为stay
-		else if (min_step_to_base[side][tx][ty] <= min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] && stay_for_beat)
+		else if (/*min_step_to_base[side][tx][ty] <= min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] &&*/ stay_for_beat)
 			my_action[tank_id] = Stay;
 		else if(min_step_to_base[side][tx][ty] == min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]])
