@@ -1419,8 +1419,10 @@ namespace TankGame
 			if (!CoordValid(tx, ty)) continue;
 			//若往那个方向走最有可能（在未来的某一回合）能卡住敌方坦克，则改变策略，进行防御
 			if (blocking_range[ty][tx] > best_blocking_range)
+			{
 				best_dir = dir;
-				
+				best_blocking_range = blocking_range[ty][tx];
+			}
 		}
 		if (best_dir != -1)
 		{
