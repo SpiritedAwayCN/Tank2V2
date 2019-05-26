@@ -914,6 +914,11 @@ namespace TankGame
 			}
 			if (right_half)break;
 		}
+		if (field->currentTurn > 4) {
+			left_half = right_half = false;
+			//第5回合起，不再调用错误的BFS
+		}
+
 		value = 1;
 		for (j = baseX[side ^ 1] - 1; j >= 0 && (ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]) || field->gameField[baseY[side ^ 1]][j]==Brick); j--) {
 			if (field->gameField[baseY[side ^ 1]][j] == Brick) {
@@ -1641,10 +1646,10 @@ namespace TankGame
 							return my_action[tank_id];
 						my_action[tank_id] = -2;
 					}
-					if (GetRandom() < 0.4) {
+					/*if (GetRandom() < 0.4) {
 						etc.Rev(field->previousActions[field->currentTurn - 2][side ^ 1][tid]);
 						tc.Rev(field->previousActions[field->currentTurn - 2][side][tank_id]);
-					}
+					}*/
 					if (etc.x==tc.x && etc.y==tc.y) {
 						Ignore_tankid = tid;
 						my_action[tank_id] = -2;
@@ -1814,7 +1819,8 @@ namespace TankGame
 					}
 					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.9; //己方半场射击概率更低 
 					else shot_weight[dir] *= 2; //对方半场的射率更高
-					if (real_shot_range[side ^ 1][ii][jj] > 0) shot_weight[dir] *= 0.5;
+					if (shot_range[side ^ 1][ii][jj] > 0)
+						shot_weight[dir] *= 0.3;
 					int wi = ii, wj = jj;
 					//以下：本次射击后，不能在射击方向（与反方向）上进入对方射程
 					ii += next_step[dir][0], jj += next_step[dir][1];
@@ -1843,6 +1849,16 @@ namespace TankGame
 										//预判 守株待兔 准备反杀（目前不完善）
 										//shot_weight[dir] = 0;
 										//break;
+										int ddir = (ty > 4) ? 3 : 2;
+										if (ty != 4&& (side?(tx<=5):(tx>=3)) && CoordValid(tx + next_step[ddir][0], ty + next_step[ddir][1])
+											&& field->gameField[tx + next_step[ddir][0]][ty + next_step[ddir][1]] == Brick) {
+											return my_action[tank_id] = ddir + 4;
+										}
+										ddir ^= 1;
+										if (ty != 4 && (side ? (tx <= 5) : (tx >= 3)) && CoordValid(tx + next_step[ddir][0], ty + next_step[ddir][1])
+											&& field->gameField[tx + next_step[ddir][0]][ty + next_step[ddir][1]] == Brick) {
+											return my_action[tank_id] = ddir + 4;
+										}
 										return my_action[tank_id] = Stay;
 									}
 									break;
