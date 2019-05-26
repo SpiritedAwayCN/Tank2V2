@@ -1398,7 +1398,9 @@ namespace TankGame
 		//2 如果现在的位置已经卡住对面了，那就不管了
 		if (tankStatusAdv[enemySide][enemyTank].blocked)
 		{
-			//my_action[tank] = Stay;
+			//有60%的几率改为stay，继续卡住对面
+			if((rand()%100)>40)
+				my_action[tank] = Stay;
 			return;
 		}
 		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
@@ -1497,6 +1499,7 @@ namespace TankGame
 		}
 
 		//还有一手：如果找不到能提前卡住敌方坦克的地方，那就往地方坦克的最短路上走，挡差
+		
 		best_dir = -1;
 		int best_my_value = 0x7fffff;
 		int best_enemy_value = 0;
@@ -1534,6 +1537,9 @@ namespace TankGame
 		{
 			int tx = x + dx[best_dir];
 			int ty = y + dy[best_dir];
+			//特判：若双方坦克已经很接近，我向前会导致和敌方坦克重合，那挡拆就毫无效果了，那就不挡拆
+			if (field->gameField[ty][tx] == None && (ty == ety && tx == etx))
+				return;
 			if (field->gameField[ty][tx] == Brick)//注意，这里可能需要射击
 				best_dir += 4;
 			my_action[tank] = (Action)std2sca(best_dir);
