@@ -1381,8 +1381,8 @@ namespace TankGame
 		int x = field->tankX[mySide][tank];
 		int y = field->tankY[mySide][tank];
 		//敌方被防御坦克的位置 e-enemy
-		int ex = field->tankX[enemySide][tank];
-		int ey = field->tankY[enemySide][tank];
+		int ex = field->tankX[enemySide][enemyTank];
+		int ey = field->tankY[enemySide][enemyTank];
 		//敌方被防御坦克预计下一步要走到的位置 t-target
 		int etx = tankStatusAdv[enemySide][enemyTank].tx;
 		int ety = tankStatusAdv[enemySide][enemyTank].ty;
