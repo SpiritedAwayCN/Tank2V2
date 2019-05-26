@@ -914,7 +914,7 @@ namespace TankGame
 			}
 			if (right_half)break;
 		}
-		if (field->currentTurn > -1) {
+		if (field->currentTurn > 1) {
 			left_half = right_half = false;
 			//不再调用错误的BFS
 		}
