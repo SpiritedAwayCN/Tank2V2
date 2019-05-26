@@ -1734,18 +1734,17 @@ namespace TankGame
 						{my_action[tank_id] = ans + 4; return my_action[tank_id]; }
 				}
 			}
-			else if (ans >= 0 && force_move_mode && !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)
-				&& GetRandom() < 0.7) {
+			else if (ans >= 0 && force_move_mode && !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)) {
 				double mrisk = 10;
 				int ans2 = Stay, mdis = 100;
 				for (int dir = 0; dir < 4; dir++) {
+					if (!ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) continue;
 					if (mrisk > shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
 						ans2 = dir; mrisk = shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]];
 						mdis = min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]];
 					}
 					else if (mrisk == shot_range[side ^ 1][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
-						if (mdis > min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]]
-							&& ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) {
+						if (mdis > min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]]) {
 							ans2 = dir; mdis = min_step_to_base[side][tx + next_step[dir][0]][ty + next_step[dir][1]];
 						}
 					}
