@@ -1105,9 +1105,32 @@ namespace TankGame
 	tagTankStatusAdv tankStatusAdv[sideCount][tankPerSide];
 
 
+	
+	bool has_tank(int, int);
+	//辅助函数：在(x,y)处是否有敌方（相对side方）坦克
+	bool has_enemy_tank(int side, int x, int y)
+	{
+		if (side == Red)
+			return (field->gameField[y][x] & Blue0) || (field->gameField[y][x] & Blue1);
+		if (side == Blue)
+			return (field->gameField[y][x] & Red0) || (field->gameField[y][x] & Red1);
+	}
+	bool enemy_may_arrive(int mySide,int x, int y)
+	{
+		if (has_enemy_tank(mySide, x, y)) return true;
+		for (int dir = 0; dir < 4; dir++)
+		{
+			int tx = x + dx[dir];
+			int ty = y + dy[dir];
+			if (!CoordValid(tx, ty)) continue;
+			if (has_enemy_tank(mySide, tx, ty))
+				return true;
+		}
+		return false;
+	}
+
 	//产生一个坦克在(x,y)处能射到的范围，结果写入arr数组，1表示能，0表示不能射到
 	//注意函数重载！！
-	bool has_tank(int, int);
 	void generate_shoot_range(int x, int y, int(*arr)[9])
 	{
 		//初始化
@@ -1217,14 +1240,7 @@ namespace TankGame
 		}
 	}
 
-	//辅助函数：在(x,y)处是否有敌方（相对side方）坦克
-	bool has_enemy_tank(int side, int x, int y)
-	{
-		if (side == Red)
-			return (field->gameField[y][x] & Blue0) || (field->gameField[y][x] & Blue1);
-		if (side == Blue)
-			return (field->gameField[y][x] & Red0) || (field->gameField[y][x] & Red1);
-	}
+
 	bool has_tank(int x, int y)
 	{
 		return (field->gameField[y][x] & Blue0) || (field->gameField[y][x] & Blue1)
@@ -1298,27 +1314,15 @@ namespace TankGame
 				int ex = t.tx + dx[t.dscDir];
 				int ey = t.ty + dy[t.dscDir];//可能的敌人的位置
 				bool dangerousEnemyBehindWall = false;
-				//找对面的地方坦克
+				//找对面的敌方坦克
 			
 				for (; CoordValid(ex, ey) && (field->gameField[ey][ex] == None || field->gameField[ey][ex] == Water || has_enemy_tank(side, ex, ey));
 					ex += dx[t.dscDir], ey += dy[t.dscDir])
-
 				{
-					if (has_enemy_tank(side, ex, ey))//对面的敌方坦克找到了！
+					if (enemy_may_arrive(side, ex, ey))//对面的敌方坦克找到了！
 					{
-						for (int enemyTank = 0; enemyTank < tankPerSide; enemyTank++)
-						{
-							//找到那边那辆敌方坦克具体是哪辆？
-							if (field->tankX[side ^ 1][enemyTank] == ex && field->tankY[side ^ 1][enemyTank] == ey)
-							{
-								//if (tankStatusAdv[side ^ 1][enemyTank].fireable)
-								if(true)//某个愚蠢的bug
-								{
-									dangerousEnemyBehindWall = true;
-									goto _tmp_finished;
-								}
-							}
-						}
+						dangerousEnemyBehindWall = true;
+						goto _tmp_finished;
 					}
 				}
 			_tmp_finished:
