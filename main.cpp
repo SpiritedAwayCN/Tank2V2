@@ -1405,8 +1405,10 @@ namespace TankGame
 			return;
 		//经验证明，这一手最好在还没开打的时候弄...不然打起来了再玩这个实在是过于愚蠢
 		//参考：https://www.botzone.org.cn/match/5ce988e3d2337e01c7aca364
-		//判断交火：我方坦克与敌方坦克互相在射程中
-		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f) return;
+		//判断交火互卡：我方坦克与敌方坦克互相在射程中，且互相在对方的最短路上
+		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f &&
+			min_path[enemySide][enemyTank][y][x] && min_path[mySide][tank][ey][ex])
+			return;
 
 
 
