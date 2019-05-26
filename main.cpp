@@ -914,9 +914,9 @@ namespace TankGame
 			}
 			if (right_half)break;
 		}
-		if (field->currentTurn > 4) {
+		if (field->currentTurn > 1) {
 			left_half = right_half = false;
-			//第5回合起，不再调用错误的BFS
+			//不再调用错误的BFS
 		}
 
 		value = 1;
