@@ -1904,7 +1904,7 @@ namespace TankGame
 										Coordinate shot_target = shoot_coord(ddir, tx, ty);
 										if (ty != 4&& (side?(tx<=5):(tx>=3)) && CoordValid(shot_target.x, shot_target.y)
 											&& field->gameField[shot_target.x][shot_target.y] == Brick
-											&& (ty<4?(shot_target.y<=4):(shot_target.y>=4))) {
+											&&  (tx==4 ||(ty<4?(shot_target.y<=4):(shot_target.y>=4)))) {
 											my_action[tank_id] = ddir + 4;
 											if (!shoot_friend(side, tank_id, fx, fy))
 												return my_action[tank_id];
@@ -1914,7 +1914,7 @@ namespace TankGame
 										shot_target = shoot_coord(ddir, tx, ty);
 										if (ty != 4 && (side ? (tx <= 5) : (tx >= 3)) && CoordValid(shot_target.x, shot_target.y)
 											&& field->gameField[shot_target.x][shot_target.y] == Brick
-											&& (ty < 4 ? (shot_target.y <= 4) : (shot_target.y >= 4))) {
+											&& (tx == 4 || (ty < 4 ? (shot_target.y <= 4) : (shot_target.y >= 4)))) {
 											my_action[tank_id] = ddir + 4;
 											if (!shoot_friend(side, tank_id, fx, fy))
 												return my_action[tank_id];
