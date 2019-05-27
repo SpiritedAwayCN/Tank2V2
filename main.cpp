@@ -247,6 +247,13 @@ namespace TankGame
 			return true;
 		}
 
+		inline bool inOppositeHalf(int tank_id,int side, bool default_value = true) {
+			if (!tankAlive[side][tank_id]) return default_value;
+			if (side)
+				return tankY[side][tank_id] < 4;
+			else
+				return tankY[side][tank_id] > 4;
+		}
 	private:
 		void _destroyTank(int side, int tank)
 		{
@@ -1757,8 +1764,30 @@ namespace TankGame
 				}
 				my_action[tank_id] = ans2; return my_action[tank_id];
 			}
-			else if (real_shot_range[side ^ 1][tx][ty] == 0 && min_step_to_base[side][tx][ty] >= min_step_to_base[side][etx][ety] && (etx - 4)*(side-0.5)>=0) {
+			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] >= min_step_to_base[side][etx][ety] && (etx - 4)*(side-0.5)>=0) {
 				stay_for_beat = true;
+			}
+			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] < min_step_to_base[side ^ 1][tx][ty]
+				&& min_step_to_base[side][tx][ty] > min_step_to_base[side][etx][ety]
+				&& min_step_to_base[side^1][etx][ety] > min_step_to_base[side^1][tx][ty]
+				&& abs(etx - tx) + abs(ety - ty) == 1 && GetRandom() < 0.7) {
+				//后退一步 新增 注：尚未调试
+				int ans2 = -1;
+				for (int dir = 0; dir < 4; dir++) {
+					if (!ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) continue;
+					if (!InShootRange(field->tankY[side^1][tid^1],field->tankX[side^1][tid^1], tx + next_step[dir][0], ty + next_step[dir][1])
+						&& !(fx== tx + next_step[dir][0] && fy== ty + next_step[dir][1])) {
+						ans2 = dir;  break;
+					}
+				}
+
+				if (ans2 != -1) {
+					my_action[tank_id] = ans2;
+					if (!shoot_friend(side, tank_id, fx, fy))
+						return my_action[tank_id] = ans2;
+					else
+						my_action[tank_id] = -2;
+				}
 			}
 			
 		}
@@ -1797,6 +1826,13 @@ namespace TankGame
 					} 
 				}
 			}
+		bool cooperate_attack = false; //合作拆家开关，条件较苛刻
+		if (field->inOppositeHalf(0, side) && field->inOppositeHalf(1, side)
+			&& field->inOppositeHalf(0, side ^ 1), field->inOppositeHalf(1, side ^ 1)
+			&& real_shot_range[side^1][tx][ty]<0.001 && real_shot_range[side^1][fx][fy]<0.001) {
+			//双方坦克全在对方半场，且均不在射程内
+			cooperate_attack = true;
+		}
 
 
 		double shot_weight[4] = { 0,0,0,0 }; //shoot与move的权重
@@ -1828,6 +1864,11 @@ namespace TankGame
 						//else 
 						shot_weight[dir] = 0;
 					}
+					if (cooperate_attack && min_step_to_base[side][tx][ty] >= min_step_to_base[side][fx][fy] && min_path[side][tank_id^1][ii][jj]>0) {
+						if (my_action[tank_id ^ 1] < 4 || !InShootRange(fx, fy, ii, jj))
+							shot_weight[dir] = 0.7; //合作拆家（未测试）
+					}
+
 					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.9; //己方半场射击概率更低 
 					else shot_weight[dir] *= 2; //对方半场的射率更高
 					if (shot_range[side ^ 1][ii][jj] > 0)
@@ -1858,17 +1899,26 @@ namespace TankGame
 										/*&& !(field->previousActions[field->currentTurn - 1][side^1][tid] > Left)*/ && cnt == 0
 										/*&& min_step_to_base[side][tx][ty] + 2>= min_step_to_base[side ^ 1][uc][ty + bias]*/) {
 										//预判 守株待兔 准备反杀（目前不完善）
-										//shot_weight[dir] = 0;
-										//break;
+
 										int ddir = (ty > 4) ? 3 : 2;
-										if (ty != 4&& (side?(tx<=5):(tx>=3)) && CoordValid(tx + next_step[ddir][0], ty + next_step[ddir][1])
-											&& field->gameField[tx + next_step[ddir][0]][ty + next_step[ddir][1]] == Brick) {
-											return my_action[tank_id] = ddir + 4;
+										Coordinate shot_target = shoot_coord(ddir, tx, ty);
+										if (ty != 4&& (side?(tx<=5):(tx>=3)) && CoordValid(shot_target.x, shot_target.y)
+											&& field->gameField[shot_target.x][shot_target.y] == Brick
+											&& (ty<4?(shot_target.y<=4):(shot_target.y>=4))) {
+											my_action[tank_id] = ddir + 4;
+											if (!shoot_friend(side, tank_id, fx, fy))
+												return my_action[tank_id];
+											my_action[tank_id] = -2;
 										}
 										ddir ^= 1;
-										if (ty != 4 && (side ? (tx <= 5) : (tx >= 3)) && CoordValid(tx + next_step[ddir][0], ty + next_step[ddir][1])
-											&& field->gameField[tx + next_step[ddir][0]][ty + next_step[ddir][1]] == Brick) {
-											return my_action[tank_id] = ddir + 4;
+										shot_target = shoot_coord(ddir, tx, ty);
+										if (ty != 4 && (side ? (tx <= 5) : (tx >= 3)) && CoordValid(shot_target.x, shot_target.y)
+											&& field->gameField[shot_target.x][shot_target.y] == Brick
+											&& (ty < 4 ? (shot_target.y <= 4) : (shot_target.y >= 4))) {
+											my_action[tank_id] = ddir + 4;
+											if (!shoot_friend(side, tank_id, fx, fy))
+												return my_action[tank_id];
+											my_action[tank_id] = -2;
 										}
 										return my_action[tank_id] = Stay;
 									}
@@ -1960,12 +2010,17 @@ namespace TankGame
 					tid = i;
 				}
 			}
+			for (count = 1; count <= field->currentTurn - 1 && tid >= 0; count++) {
+				if (field->previousActions[field->currentTurn - count][side ^ 1][tid] != Stay) break;
+			}
 			if (tid >= 0 && field->tankY[side ^ 1][tid] == tx && field->tankX[side ^ 1][tid] == ty) {
-				for (count = 1; count <= field->currentTurn - 1; count++) {
-					if (field->previousActions[field->currentTurn-count][side ^ 1][tid] != Stay) break;
-				}
+				
 				if ((count > 2 + int(GetRandom()*1.8) && min_step_to_base[side][tx][ty]<=min_step_to_base[side^1][tx][ty]) || Ignore_tankid == tid)
 					return my_action[tank_id];
+			}
+			if (tid >= 0 && min_step_to_base[side][tx][ty] <= min_step_to_base[side ^ 1][tx][ty] && count > 3 + int(GetRandom()*1.7)) {
+				// 3或4回合若对方不动，则忽略
+				return my_action[tank_id];
 			}
 			// El 执行到此处，表明最短路唯一下降前方在敌方射程内，并且一定不会往前走了
 			// 由于已经别中move，以下将尝试2次看是否能别中向该方向射击，否则改为Stay
