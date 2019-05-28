@@ -1905,7 +1905,7 @@ namespace TankGame
 				int ans = Stay;//默认不动
 				int gx, gy;
 				bool avoid_friend = min_step_to_base[side][fx][fy] == 1 && shoot_friend(side, tank_id ^ 1, tx, ty);
-				double risk = shot_range[side ^ 1][tx][ty], rfactor = GetRandom(); //选取为1且射中风险最小的位置
+				double risk = shot_range[side ^ 1][tx][ty], rfactor = GetRandom() + 0.5; //选取为1且射中风险最小的位置
 				if (avoid_friend) risk = 1000;
 				for (int dir = 0; dir < 4; dir++) {
 					gx = tx + next_step[dir][0];
