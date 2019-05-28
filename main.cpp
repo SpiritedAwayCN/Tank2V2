@@ -1622,7 +1622,7 @@ namespace TankGame
 				}
 			}
 		}
-		int best_dir = -1;
+		best_dir = -1;
 		int best_blocking_range = 0;
 		//得到了blocking_range，然后做进一步决策
 		for (int dir = 0; dir < 4; dir++)
