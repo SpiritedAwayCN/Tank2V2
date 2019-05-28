@@ -855,37 +855,55 @@ namespace TankGame
 		return ans;
 	}
 	//返回标准版
+	bool has_tank(int, int);
 	bool has_unique_dsc_dir(int side, int x, int y)
 	{
 		int tx, ty;
 		int numDscDir = 0;
+		int best_delta = 0;
 		for (int dir = 0; dir < 4; dir++)
 		{
 			tx = x + dx[dir];
 			ty = y + dy[dir];
-			if (CoordValid(tx, ty))
+			if (!CoordValid(tx, ty)) continue;
+			if (field->gameField[ty][tx] == Steel || field->gameField[ty][tx] == Water || 
+				field->gameField[ty][tx] == Base || has_tank(tx,ty))
+				continue;
+			int delta = min_step_to_base[side][y][x] - min_step_to_base[side][ty][tx];
+			if (delta > best_delta)
 			{
-				if (field->gameField[ty][tx] != Steel && field->gameField[ty][tx] != Water)
-					if (min_step_to_base[ty][tx] < min_step_to_base[y][x])
-						numDscDir++;
+				numDscDir = 1;
+				best_delta = delta;
 			}
+			else if (delta == best_delta)
+				numDscDir++;
 		}
+		
 		return numDscDir == 1;
 	}
 	int get_unique_dsc_dir(int side, int x, int y)
 	{
 		int tx, ty;
+		int best_delta = 0;
+		int best_dir = -1;
 		for (int dir = 0; dir < 4; dir++)
 		{
 			tx = x + dx[dir];
 			ty = y + dy[dir];
-			if (CoordValid(tx, ty))
+			if (!CoordValid(tx, ty)) continue;
+			if (field->gameField[ty][tx] == Steel || field->gameField[ty][tx] == Water || 
+				field->gameField[ty][tx] == Base || has_tank(tx, ty))
+				continue;
+
+			int delta = min_step_to_base[side][y][x] - min_step_to_base[side][ty][tx];
+			if (delta > best_delta)
 			{
-				if (field->gameField[ty][tx] != Steel && field->gameField[ty][tx] != Water)
-					if (min_step_to_base[ty][tx] < min_step_to_base[y][x])
-						return dir;
+				best_dir = dir;
+				best_delta = delta;
 			}
 		}
+		if (best_dir != -1)
+			return best_dir;
 	}
 	inline bool is_none(int x, int y)
 	{
@@ -1328,7 +1346,15 @@ namespace TankGame
 						tankStatusAdv[side][tank].ty = y1;
 					}
 				}
-			
+				//特判
+				int x = field->tankX[side][tank];
+				int y = field->tankY[side][tank];
+				if (has_unique_dsc_dir(side, x, y))
+				{
+					int dir = get_unique_dsc_dir(side, x, y);
+					tankStatusAdv[side][tank].tx = x + dx[dir];
+					tankStatusAdv[side][tank].ty = y + dy[dir];
+				}
 			}
 		}
 		
@@ -1478,22 +1504,15 @@ namespace TankGame
 		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
 		if (tankStatusAdv[mySide][tank].blocked)
 			return;
-		//额外特判：如果现在有生命危险...那还是交给能保命的通用AI吧（这来自于某个bug）
-		if (real_shot_range[enemySide][y][x] > 0.0f)
-			return;
-		//经验证明，这一手最好在还没开打的时候弄...不然打起来了再玩这个实在是过于愚蠢
-		//参考：https://www.botzone.org.cn/match/5ce988e3d2337e01c7aca364
-		//判断交火互卡：我方坦克与敌方坦克互相在射程中，且互相在对方的最短路上
-		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f &&
-			min_path[enemySide][enemyTank][y][x] && min_path[mySide][tank][ey][ex])
-			return;
+		
+		
 
-
+		
 
 		//核心
-
 		//0 最稳妥的方法：永远卡在敌方坦克的必经之路上，对面就算是天神下凡也别想过去
-		if (has_unique_dsc_dir(enemySide, etx, ety))//得提前一步预判
+		//if (has_unique_dsc_dir(enemySide, etx, ety))//得提前一步预判
+		if(has_unique_dsc_dir(enemySide,etx,ety))
 		{
 			int dir1 = get_unique_dsc_dir(enemySide, etx, ety);
 			int ettx = etx + dx[dir1];
@@ -1524,11 +1543,41 @@ namespace TankGame
 		}
 
 
+	
+
 		//如果不能一步卡到，就提前卡住敌方坦克的最短路，挡差
+		//基地周围一圈必经之路加一点权重
+		if (field->currentTurn > 5)
+		{
+			if (mySide == Blue)
+			{
+				min_path[enemySide][enemyTank][0][3] += 1;
+				min_path[enemySide][enemyTank][0][5] += 1;
+				min_path[enemySide][enemyTank][1][4] += 1;
+				if (ex >= 6)
+					min_path[enemySide][enemyTank][0][5] += 1;
+				else if (ex <= 2)
+					min_path[enemySide][enemyTank][0][5] += 1;
+				else
+					min_path[enemySide][enemyTank][1][4] += 1;
+			}
+			else
+			{
+				min_path[enemySide][enemyTank][8][3] += 1;
+				min_path[enemySide][enemyTank][8][5] += 1;
+				min_path[enemySide][enemyTank][7][4] += 1;
+				if (ex >= 6)
+					min_path[enemySide][enemyTank][8][5] += 1;
+				else if (ex <= 2)
+					min_path[enemySide][enemyTank][8][5] += 1;
+				else
+					min_path[enemySide][enemyTank][7][4] += 1;
+			}
+		}
 		int best_dir = -1;
 		int best_my_value = 0x7fffff;
 		int best_enemy_value = min_path[enemySide][enemyTank][y][x];//原始：和原地呆着不动相比
-																	//得到了blocking_range，然后做进一步决策
+		
 		for (int dir = 0; dir < 4; dir++)
 		{
 			//四周四个方向
@@ -1558,7 +1607,7 @@ namespace TankGame
 		}
 		if (best_dir == -1 && best_enemy_value != 0)//若原地已经能很好的挡住，那就不动
 		{
-			if (my_action[tank] >= 0 && my_action[tank] <= 3)
+			if (my_action[tank] >= 0 && my_action[tank] <= 3 && real_shot_range[enemySide][y][x]==0.0f)
 				my_action[tank] = Stay;
 			return;
 		}
@@ -1566,6 +1615,8 @@ namespace TankGame
 		{
 			int tx = x + dx[best_dir];
 			int ty = y + dy[best_dir];
+			if (real_shot_range[enemySide][ty][tx] > 0.0f)
+				return;
 			//特判：若双方坦克已经很接近，我向前会导致和敌方坦克重合，那挡拆就毫无效果了，那就不挡拆
 			if (field->gameField[ty][tx] == None && (ty == ety && tx == etx))
 				return;
@@ -1575,7 +1626,15 @@ namespace TankGame
 			return;
 		}
 
-
+		//额外特判：如果现在有生命危险...那还是交给能保命的通用AI吧（这来自于某个bug）
+		if (real_shot_range[enemySide][y][x] > 0.0f)
+			return;
+		//经验证明，这一手最好在还没开打的时候弄...不然打起来了再玩这个实在是过于愚蠢
+		//参考：https://www.botzone.org.cn/match/5ce988e3d2337e01c7aca364
+		//判断交火互卡：我方坦克与敌方坦克互相在射程中，且互相在对方的最短路上
+		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f &&
+			min_path[enemySide][enemyTank][y][x] && min_path[mySide][tank][ey][ex])
+			return;
 
 		//这个数组表示有哪些位置能卡住enemyTank，用01表示
 		int blocking_range[9][9];
@@ -2358,6 +2417,12 @@ int main()
 			continue;
 		}
 		//else
+		//撤销防御模式
+		if (TankGame::min_step_to_base[mySide][y][x] <= TankGame::min_step_to_base[mySide ^ 1][ey][ex])
+		{
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
+			continue;
+		}
 		if ((mySide==0 && y>=5)|| (mySide == 1 && y <= 4))
 		{//撤销防御模式，条件是在敌方半场
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
