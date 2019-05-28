@@ -1023,7 +1023,7 @@ namespace TankGame
 	void _genetrate_min_path_dfs(const int& side,const int& tank,int x0,int y0, vector<pair<int, int>>& prev_path)
 	{
 		bool terminate = true;
-		
+		if (!field->tankAlive[side][tank]) return;
 
 		for (int i = 0; i < 4; i++)//环顾四周找梯度下降方向，那就是最短路的下一步
 		{
@@ -1831,6 +1831,49 @@ namespace TankGame
 	int cnt = 0;
 	bool avoid_failed = false, stay_for_beat[2] = { false,false };
 	//基于最短路的傻瓜策略
+	inline bool CanSafelyShoot(int dir, int wi, int wj, int tx, int ty, int side) {
+		//目前只能判断左右
+		int ii = wi+next_step[dir][0], jj = wj+next_step[dir][1];
+		int uc, dc;
+		for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]);
+		uc = next_step[dir][0] ? ii : jj;
+		ii = tx; jj = ty;
+		for (; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir ^ 1][0], jj += next_step[dir ^ 1][1]);
+		dc = next_step[dir ^ 1][0] ? ii : jj;
+		if (uc > dc) std::swap(uc, dc);
+		//uc dc: 该方向上，可以射到tank的坐标范围
+		for (uc++, dc--; uc <= dc; uc++) {
+			if ((dir < 2 && !ItemIsAccessible(field->gameField[uc][ty])) || (dir >= 2 && !ItemIsAccessible(field->gameField[tx][uc]))) continue;
+			for (int bias = -1; bias <= 1; bias++) {
+				if (dir >= 2) {//左右
+					if (ty == uc && bias)continue;
+					if (uc == wj) continue;
+					if (uc > min(ty, wj) && uc < max(ty, wj)) continue;
+					if (CoordValid(tx + bias, uc) && ((IsTank(field->gameField[tx + bias][uc]) && GetTankSide(field->gameField[tx + bias][uc]) != side)
+						|| HasMultipleTank(field->gameField[tx + bias][uc])))
+						return false;
+				}
+			}
+		}
+		return true;
+	}
+	inline bool CanGetThrough(int tx, int ty, int side) {
+		int tank_count = 0, total_count = 0;
+		for (int dir = 0; dir < 4; dir++) {
+			tank_count = 0;
+			for (int ii = tx, jj = ty; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
+				if ((IsTank(field->gameField[ii][jj]) && GetTankSide(field->gameField[ii][jj]) != side)
+					|| HasMultipleTank(field->gameField[ii][jj])) {
+					total_count++;
+					tank_count++;
+				} //敌军，上！
+			}
+			if (tank_count == 2) return true; //同一方向有两个坦克，安全
+		}
+		if (total_count == 2) return false; //在两个坦克射程内且不在同一方向，危险
+		return true; //其余情况，安全
+	}
+
 	int get_stupid_action(int tank_id) {
 		bool force_move_mode = false;
 		int side = field->mySide;
@@ -1847,15 +1890,17 @@ namespace TankGame
 
 		if (field->previousActions[field->currentTurn - 1][side][tank_id] > Left) force_move_mode = true; //上一步是射子弹
 
-
-
-
 		//↓一下可射到基地的特判
 		bool go_out_if = false;
 		if ((min_step_to_base[side][tx][ty] == 1 || tx == baseY[side^1]) && !avoid_failed) {
 			if (!force_move_mode && (min_step_to_base[side][tx][ty] == 1 || real_shot_range[side^1][tx][ty]<=0.001)) {
 				if (baseX[side ^ 1] == ty) { my_action[tank_id] = side + 4;} //同一竖行，则向前射
 				else { my_action[tank_id] = 4 + (baseX[side ^ 1] < ty ? 3 : 2); } //同一横行，则向基地射
+				if (min_step_to_base[side][field->tankY[side][tank_id ^ 1]][field->tankX[side][tank_id ^ 1]] == 1
+					&& field->previousActions[field->currentTurn - 1][side][tank_id ^ 1] <= Left
+					&& ty==4 && field->tankX[side][tank_id ^ 1]==4 && abs(tx-baseY[side^1])>abs(field->tankY[side][tank_id ^ 1] -baseY[side^1])) {
+					my_action[tank_id] = -1;
+				}
 			}
 			else {
 				int ans = Stay;//默认不动
@@ -1875,8 +1920,8 @@ namespace TankGame
 							risk = shot_range[side ^ 1][gx][gy];
 							ans = dir;
 						}
-						else if (risk == temp && GetRandom() < 0.5) {
-							ans = dir; //两个风险一致，则有0.5的概率换方向移动
+						else if (abs(risk-temp)<0.001 && GetRandom() < 0.6) {
+							ans = dir; //两个风险一致，则有0.6的概率换方向移动
 						}
 					}
 				}
@@ -1913,7 +1958,8 @@ namespace TankGame
 					if (etc != tc) {
 						Coordinate cord = shoot_coord(shot_side, tx, ty);
 						my_action[tank_id] = shot_side + 4;
-						if (!shoot_friend(side, tank_id, fx, fy) && (!CoordValid(cord.x,cord.y) || min_path[side^1][tid^1][cord.x][cord.y]==0))
+						if (!shoot_friend(side, tank_id, fx, fy) && (!CoordValid(cord.x,cord.y) || min_path[side^1][tid^1][cord.x][cord.y]==0)
+							&& GetRandom() <= 0.2)
 							return my_action[tank_id];
 						my_action[tank_id] = -2;
 					}
@@ -1935,6 +1981,7 @@ namespace TankGame
 			int gx = tx + next_step[i][0], gy = ty + next_step[i][1];
 			if (!CoordValid(gx, gy)) continue;
 			if (shoot_friend(side, tank_id ^ 1, gx, gy)) continue;
+			if (!CanGetThrough(gx, gy, side)) continue; //注意：需要测试
 			if (min_step_to_base[side][tx][ty] >= min_step_to_base[side][gx][gy] - 1 && min_step_to_base[side][gx][gy]>=0) {
 				act[i] = min_step_to_base[side][tx][ty] - min_step_to_base[side][gx][gy] + 0.3;
 				if ((ty - 4)*(fy - 4) < 0 && gy == 4 && IsUniqueDir(side, gx, gy) == i) act[i] -= 0.5;
@@ -2155,7 +2202,9 @@ namespace TankGame
 										Coordinate shot_target = shoot_coord(ddir, tx, ty);
 										if (ty != 4&& (side?(tx<=5):(tx>=3)) && CoordValid(shot_target.x, shot_target.y)
 											&& field->gameField[shot_target.x][shot_target.y] == Brick
-											&&  (tx==4 ||(ty<4?(shot_target.y<=4):(shot_target.y>=4)))) {
+											&&  (tx==4 ||(ty<4?(shot_target.y<=4):(shot_target.y>=4)))
+											&& shot_target.y!=0 && shot_target.y!=8
+											&& CanSafelyShoot(ddir, shot_target.x, shot_target.y,tx,ty,side)) {
 											my_action[tank_id] = ddir + 4;
 											if (!shoot_friend(side, tank_id, fx, fy))
 												return my_action[tank_id];
@@ -2165,7 +2214,10 @@ namespace TankGame
 										shot_target = shoot_coord(ddir, tx, ty);
 										if (ty != 4 && (side ? (tx <= 5) : (tx >= 3)) && CoordValid(shot_target.x, shot_target.y)
 											&& field->gameField[shot_target.x][shot_target.y] == Brick
-											&& (tx == 4 || (ty < 4 ? (shot_target.y <= 4) : (shot_target.y >= 4)))) {
+											&& (tx == 4 || (ty < 4 ? (shot_target.y <= 4) : (shot_target.y >= 4)))
+											&& shot_target.y != 0 && shot_target.y != 8
+											&& GetRandom() < 0.45
+											&& CanSafelyShoot(ddir, shot_target.x, shot_target.y, tx, ty, side)) {
 											my_action[tank_id] = ddir + 4;
 											if (!shoot_friend(side, tank_id, fx, fy))
 												return my_action[tank_id];
