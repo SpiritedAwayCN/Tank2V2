@@ -2198,7 +2198,7 @@ namespace TankGame
 				if ((count > 2 + int(GetRandom()*1.8) && min_step_to_base[side][tx][ty]<=min_step_to_base[side^1][tx][ty]) || Ignore_tankid == tid)
 					return my_action[tank_id];
 			}
-			if (tid >= 0 && count > 3 + int(GetRandom()*1.7) && count_dont_move > 3 + int(GetRandom()*1.7)) {
+			if (tid >= 0 && (count > 3 + int(GetRandom()*1.7) || count_dont_move >= 25) && count_dont_move > 3 + int(GetRandom()*1.7)) {
 				// 3或4回合若对方不动，则忽略
 				return my_action[tank_id];
 			}
@@ -2306,9 +2306,9 @@ int main()
 
 	//初始化随机种子
 	srand((unsigned)time(nullptr));
-//#ifdef _BOTZONE_ONLINE
+#ifdef _BOTZONE_ONLINE
 	TankGame::decode_data(data);
-//#endif
+#endif
 	//预处理，包含了bfs等
 	TankGame::pre_process();
 
