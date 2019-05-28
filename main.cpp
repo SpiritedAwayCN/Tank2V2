@@ -1429,6 +1429,18 @@ namespace TankGame
 	{
 		return abs(x1 - x2) + abs(y1 - y2);//曼哈顿距离
 	}
+	void print_arr(int(*arr)[9])
+	{
+		for (int i = 0; i < 9; i++)
+		{
+			for (int j = 0; j < 9; j++)
+			{
+				cout << arr[i][j] << " ";
+			}
+			cout << endl;
+		}
+		system("pause");
+	}
 	void get_revising_defense_act(int tank, int enemyTank)
 	{
 		int mySide = field->mySide;
@@ -1599,50 +1611,50 @@ namespace TankGame
 		}
 
 
-		//一步之内卡不到，则考虑后面几步
-		memset(blocking_range, 0, sizeof(blocking_range));
-		//1 能射到路径上某一点的位置 
-		for (int i = 0; i < 9; i++)
-		{
-			for (int j = 0; j < 9; j++)
-			{
-				if (j == 4) continue;//同理，中线特判
-				if (min_path[enemySide][enemyTank][i][j])//对 敌方坦克路径上的每一点，找能将其卡住的位置
-				{
-					int tmp[9][9];
-					generate_shot_range(i, j, tmp);
-					for (int ii = 0; ii < 9; ii++)
-					{
-						for (int jj = 0; jj < 9; jj++)
-						{
-							tmp[ii][jj] *= min_path[enemySide][enemyTank][i][j];//加上一些权重
-						}
-					}
-					_add_arr(blocking_range, tmp);
-				}
-			}
-		}
-		best_dir = -1;
-		int best_blocking_range = 0;
-		//得到了blocking_range，然后做进一步决策
-		for (int dir = 0; dir < 4; dir++)
-		{
-				//四周四个方向
-			int tx = x + dx[dir];
-			int ty = y + dy[dir];
-			if (!CoordValid(tx, ty)) continue;
-			//若往那个方向走最有可能（在未来的某一回合）能卡住敌方坦克，则改变策略，进行防御
-			if (blocking_range[ty][tx] > best_blocking_range)
-			{
-				best_dir = dir;
-				best_blocking_range = blocking_range[ty][tx];
-			}
-		}
-		if (best_dir != -1)
-		{
-			my_action[tank] = (Action)std2sca(best_dir);
-			return;
-		}
+		////一步之内卡不到，则考虑后面几步
+		//memset(blocking_range, 0, sizeof(blocking_range));
+		////1 能射到路径上某一点的位置 
+		//for (int i = 0; i < 9; i++)
+		//{
+		//	for (int j = 0; j < 9; j++)
+		//	{
+		//		if (j == 4) continue;//同理，中线特判
+		//		if (min_path[enemySide][enemyTank][i][j])//对 敌方坦克路径上的每一点，找能将其卡住的位置
+		//		{
+		//			int tmp[9][9];
+		//			generate_shot_range(j, i, tmp);
+		//			for (int ii = 0; ii < 9; ii++)
+		//			{
+		//				for (int jj = 0; jj < 9; jj++)
+		//				{
+		//					tmp[ii][jj] *= min_path[enemySide][enemyTank][i][j];//加上一些权重
+		//				}
+		//			}
+		//			_add_arr(blocking_range, tmp);
+		//		}
+		//	}
+		//}
+		//best_dir = -1;
+		//int best_blocking_range = 0;
+		////得到了blocking_range，然后做进一步决策
+		//for (int dir = 0; dir < 4; dir++)
+		//{
+		//		//四周四个方向
+		//	int tx = x + dx[dir];
+		//	int ty = y + dy[dir];
+		//	if (!CoordValid(tx, ty)) continue;
+		//	//若往那个方向走最有可能（在未来的某一回合）能卡住敌方坦克，则改变策略，进行防御
+		//	if (blocking_range[ty][tx] > best_blocking_range)
+		//	{
+		//		best_dir = dir;
+		//		best_blocking_range = blocking_range[ty][tx];
+		//	}
+		//}
+		//if (best_dir != -1)
+		//{
+		//	my_action[tank] = (Action)std2sca(best_dir);
+		//	return;
+		//}
 
 		
 		//什么？这都没放到对面坦克？究极压箱底策略：往步数大的地方反向走——这样会回退到起点附近，然后就容易卡到敌方坦克了
@@ -1658,15 +1670,16 @@ namespace TankGame
 			pair<int, int> begin;
 			if (mySide == Blue)
 				if (tank == 0)
-					begin = make_pair(2, baseY[Blue]);
+					begin = make_pair(3, 1);
 				else
-					begin = make_pair(6, baseY[Blue]);
+					begin = make_pair(5, 1);
 			else
 				if (tank == 0)
-					begin = make_pair(6, baseY[Red]);
+					begin = make_pair(5, 7);
 				else
-					begin = make_pair(2, baseY[Red]);
-			r_step[begin.first][begin.second] = 0;
+					begin = make_pair(3, 7);
+			r_step[begin.second][begin.first] = 0;
+			q.push(begin);
 			while (!q.empty())
 			{
 				int x = q.front().first;
@@ -1677,12 +1690,13 @@ namespace TankGame
 					int tx = x + dx[dir];
 					int ty = y + dy[dir];
 					if (!CoordValid(tx, ty)) continue;
-					if (field->gameField[ty][tx] != None &&field->gameField[ty][tx] != Brick) continue;
+					if (field->gameField[ty][tx] ==Steel || field->gameField[ty][tx] == Water
+						|| field->gameField[ty][tx] == Base) continue;
 					if (r_step[ty][tx] == -1 || 
-						(field->gameField[ty][tx] == None && r_step[ty][tx] > r_step[y][x] + 1) ||
-						(field->gameField[ty][tx] == Brick && r_step[ty][tx] > r_step[y][x] + 2))
+						(field->gameField[ty][tx] == Brick && r_step[ty][tx] > r_step[y][x] + 2) ||
+						(field->gameField[ty][tx] != Brick && r_step[ty][tx] > r_step[y][x] + 1))
 					{
-						if(field->gameField[ty][tx] == None)
+						if(field->gameField[ty][tx] !=Brick)
 							r_step[ty][tx] = r_step[y][x] + 1;
 						else
 							r_step[ty][tx] = r_step[y][x] + 2;
@@ -1701,6 +1715,7 @@ namespace TankGame
 			int tx = x + dx[dir];
 			int ty = y + dy[dir];
 			if (!CoordValid(tx, ty)) continue;
+			if (r_step[ty][tx] == -1) continue;
 			if (r_step[ty][tx] <min_step)
 			{
 				best_dir = dir;
@@ -2306,9 +2321,9 @@ int main()
 
 	//初始化随机种子
 	srand((unsigned)time(nullptr));
-//#ifdef _BOTZONE_ONLINE
+#ifdef _BOTZONE_ONLINE
 	TankGame::decode_data(data);
-//#endif
+#endif
 	//预处理，包含了bfs等
 	TankGame::pre_process();
 
@@ -2354,7 +2369,7 @@ int main()
 		//{
 		//	TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 		//}
-		else if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
+		/*else*/ if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
 		//	&& TankGame::field->currentTurn>=4)
 		{
 			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
