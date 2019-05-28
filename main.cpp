@@ -2119,8 +2119,8 @@ namespace TankGame
 			for (count = 1; count <= field->currentTurn - 1 && tid >= 0; count++) {
 				if (field->previousActions[field->currentTurn - count][side ^ 1][tid] != Stay) break;
 			}
-			for (count_dont_move = 1; count_dont_move <= field->currentTurn - 1 && tid >= 0; count_dont_move++) {
-				if (field->previousActions[field->currentTurn - count_dont_move][side][tid] <= Left && field->previousActions[field->currentTurn - count_dont_move][side][tid] >= Up) break;
+			for (count_dont_move = 1; count_dont_move <= field->currentTurn - 1; count_dont_move++) {
+				if (field->previousActions[field->currentTurn - count_dont_move][side][tank_id] <= Left && field->previousActions[field->currentTurn - count_dont_move][side][tank_id]>=Up) break;
 			}
 			if (tid >= 0 && field->tankY[side ^ 1][tid] == tx && field->tankX[side ^ 1][tid] == ty) {
 				
