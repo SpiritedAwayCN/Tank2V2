@@ -1763,7 +1763,7 @@ namespace TankGame
 				}
 				my_action[tank_id] = ans2; return my_action[tank_id];
 			}
-			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] >= min_step_to_base[side][etx][ety] && (etx - 4)*(side-0.5)>=0) {
+			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] >= min_step_to_base[side^1][etx][ety] && (etx - 4)*(side-0.5)>=0) {
 				stay_for_beat[tank_id] = true;
 			}
 			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] < min_step_to_base[side ^ 1][tx][ty]
