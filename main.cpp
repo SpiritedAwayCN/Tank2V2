@@ -2003,7 +2003,7 @@ namespace TankGame
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]])
 			my_action[tank_id] = Stay;
 		else if (shot_dir >= 0&& ans==shot_dir && real_shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] >0.0001) {
-			int tid = -1, count;
+			int tid = -1, count, count_dont_move;
 			for (int i = 0; i < tankPerSide; i++) {
 				if (InShootRange(field->tankY[side ^ 1][i], field->tankX[side ^ 1][i], tx + next_step[ans][0], ty + next_step[ans][1])) {
 					if (tid >= 0) break;
@@ -2013,12 +2013,16 @@ namespace TankGame
 			for (count = 1; count <= field->currentTurn - 1 && tid >= 0; count++) {
 				if (field->previousActions[field->currentTurn - count][side ^ 1][tid] != Stay) break;
 			}
+			for (count_dont_move = 1; count_dont_move <= field->currentTurn - 1 && tid >= 0; count_dont_move++) {
+				if (field->previousActions[field->currentTurn - count][side][tid] <= Left || field->previousActions[field->currentTurn - count][side][tid] >= Up) break;
+			}
 			if (tid >= 0 && field->tankY[side ^ 1][tid] == tx && field->tankX[side ^ 1][tid] == ty) {
 				
 				if ((count > 2 + int(GetRandom()*1.8) && min_step_to_base[side][tx][ty]<=min_step_to_base[side^1][tx][ty]) || Ignore_tankid == tid)
 					return my_action[tank_id];
 			}
-			if (tid >= 0 && min_step_to_base[side][tx][ty] <= min_step_to_base[side ^ 1][tx][ty] && count > 3 + int(GetRandom()*1.7)) {
+			if (tid >= 0 && min_step_to_base[side][tx][ty] <= min_step_to_base[side ^ 1][tx][ty] && count > 3 + int(GetRandom()*1.7)
+				&& count_dont_move > 3 + int(GetRandom()*1.7)) {
 				// 3或4回合若对方不动，则忽略
 				return my_action[tank_id];
 			}
