@@ -2440,7 +2440,7 @@ int main()
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
 		}
 		//特判
-		else if (TankGame::field->currentTurn >= 5 && TankGame::mht_dis(x, y, TankGame::baseX[mySide], TankGame::baseY[mySide]) < 3)
+		else if (TankGame::field->currentTurn >= 7 && TankGame::mht_dis(x, y, TankGame::baseX[mySide], TankGame::baseY[mySide]) < 3)
 		{
 			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
