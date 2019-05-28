@@ -250,9 +250,9 @@ namespace TankGame
 		inline bool inOppositeHalf(int tank_id,int side, bool default_value = true) {
 			if (!tankAlive[side][tank_id]) return default_value;
 			if (side)
-				return tankY[side][tank_id] < 4;
+				return tankY[side][tank_id] <= 4;
 			else
-				return tankY[side][tank_id] > 4;
+				return tankY[side][tank_id] >= 4;
 		}
 	private:
 		void _destroyTank(int side, int tank)
@@ -1584,7 +1584,7 @@ namespace TankGame
 	}
 
 	int cnt = 0;
-	bool avoid_failed = false;
+	bool avoid_failed = false, stay_for_beat[2] = { false,false };
 	//基于最短路的傻瓜策略
 	int get_stupid_action(int tank_id) {
 		bool force_move_mode = false;
@@ -1695,7 +1695,6 @@ namespace TankGame
 		}
 		//↑先把合法的弄成非负
 
-		bool stay_for_beat = false;
 		//若在敌方伪射程之内
 		if (shot_range[side ^ 1][tx][ty] > 0) {
 			int ans = Stay, tid = -1, etx = 0, ety = 0;
@@ -1765,7 +1764,7 @@ namespace TankGame
 				my_action[tank_id] = ans2; return my_action[tank_id];
 			}
 			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] >= min_step_to_base[side][etx][ety] && (etx - 4)*(side-0.5)>=0) {
-				stay_for_beat = true;
+				stay_for_beat[tank_id] = true;
 			}
 			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] < min_step_to_base[side ^ 1][tx][ty]
 				&& min_step_to_base[side][tx][ty] > min_step_to_base[side][etx][ety]
@@ -1997,7 +1996,7 @@ namespace TankGame
 		else if (min_step_to_base[side][tx][ty] < min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]] + 0.1 + 0.1 * GetRandom())
 			my_action[tank_id] = Stay; //不在射程内且行动后最短路变大，则改为stay
-		else if (/*min_step_to_base[side][tx][ty] <= min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] &&*/ stay_for_beat)
+		else if (/*min_step_to_base[side][tx][ty] <= min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]] &&*/ stay_for_beat[tank_id])
 			my_action[tank_id] = Stay;
 		else if(min_step_to_base[side][tx][ty] == min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]])
