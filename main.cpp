@@ -1446,8 +1446,8 @@ namespace TankGame
 
 		//防御有着几条条件。若不满足，则不修改通用AI已经做出的条件：
 		//1 敌方坦克不具唯一梯度下降方向，防御时机不好
-		if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
-			return;
+		//if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
+		//	return;
 		//2 如果现在的位置已经卡住对面了，那就不管了
 		if (tankStatusAdv[enemySide][enemyTank].blocked)
 		{
@@ -1645,6 +1645,77 @@ namespace TankGame
 		}
 
 		
+		//什么？这都没放到对面坦克？究极压箱底策略：往步数大的地方反向走——这样会回退到起点附近，然后就容易卡到敌方坦克了
+		int r_step[9][9];
+
+		//一波小小的bfs
+		{
+			for (int i = 0; i < 9; i++)
+				for (int j = 0; j < 9; j++)
+					r_step[i][j] = -1;
+
+			queue<pair<int, int>> q;
+			pair<int, int> begin;
+			if (mySide == Blue)
+				if (tank == 0)
+					begin = make_pair(2, baseY[Blue]);
+				else
+					begin = make_pair(6, baseY[Blue]);
+			else
+				if (tank == 0)
+					begin = make_pair(6, baseY[Red]);
+				else
+					begin = make_pair(2, baseY[Red]);
+			r_step[begin.first][begin.second] = 0;
+			while (!q.empty())
+			{
+				int x = q.front().first;
+				int y = q.front().second;
+				q.pop();
+				for (int dir = 0; dir < 4; dir++)
+				{
+					int tx = x + dx[dir];
+					int ty = y + dy[dir];
+					if (!CoordValid(tx, ty)) continue;
+					if (field->gameField[ty][tx] != None &&field->gameField[ty][tx] != Brick) continue;
+					if (r_step[ty][tx] == -1 || 
+						(field->gameField[ty][tx] == None && r_step[ty][tx] > r_step[y][x] + 1) ||
+						(field->gameField[ty][tx] == Brick && r_step[ty][tx] > r_step[y][x] + 2))
+					{
+						if(field->gameField[ty][tx] == None)
+							r_step[ty][tx] = r_step[y][x] + 1;
+						else
+							r_step[ty][tx] = r_step[y][x] + 2;
+						q.push(make_pair(tx, ty));
+					}
+
+				}
+			}
+		}
+		//得到了r_step数组
+		//找出最优方向
+		best_dir = -1;
+		int min_step = 10;
+		for (int dir = 0; dir < 4; dir++)
+		{
+			int tx = x + dx[dir];
+			int ty = y + dy[dir];
+			if (!CoordValid(tx, ty)) continue;
+			if (r_step[ty][tx] <min_step)
+			{
+				best_dir = dir;
+				min_step = r_step[ty][tx];
+			}
+		}
+		if (best_dir != -1)
+		{
+			int tx = x + dx[best_dir];
+			int ty = y + dy[best_dir];
+			if (field->gameField[ty][tx] == Brick)//注意，这里可能需要射击
+				best_dir += 4;
+			my_action[tank] = (Action)std2sca(best_dir);
+			return;
+		}
 	}
 
 	void decode_data(string data)
@@ -2235,8 +2306,9 @@ int main()
 
 	//初始化随机种子
 	srand((unsigned)time(nullptr));
-	//TankGame::decode_data(data);
-
+//#ifdef _BOTZONE_ONLINE
+	TankGame::decode_data(data);
+//#endif
 	//预处理，包含了bfs等
 	TankGame::pre_process();
 
@@ -2277,13 +2349,13 @@ int main()
 			continue;
 		}
 		
-		if ((TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 1//应sca要求，前4回合特判 
-			&& TankGame::field->currentTurn < 4))
-		{
-			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
-		}
-		else if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2
-			&& TankGame::field->currentTurn>=4)
+		//if ((TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 1//应sca要求，前4回合特判 
+		//	&& TankGame::field->currentTurn < 4))
+		//{
+		//	TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+		//}
+		else if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
+		//	&& TankGame::field->currentTurn>=4)
 		{
 			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
