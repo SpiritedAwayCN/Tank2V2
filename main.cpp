@@ -1606,6 +1606,7 @@ namespace TankGame
 
 
 		//↓一下可射到基地的特判
+		bool go_out_if = false;
 		if ((min_step_to_base[side][tx][ty] == 1 || tx == baseY[side^1]) && !avoid_failed) {
 			if (!force_move_mode && (min_step_to_base[side][tx][ty] == 1 || real_shot_range[side^1][tx][ty]<=0.001)) {
 				if (baseX[side ^ 1] == ty) { my_action[tank_id] = side + 4;} //同一竖行，则向前射
@@ -1635,15 +1636,21 @@ namespace TankGame
 					}
 				}
 				my_action[tank_id] = ans;
-				if (ans == Stay && avoid_friend) {
+				if (risk > 0.001 && real_shot_range[side^1][tx][ty]>=0.001 && !force_move_mode) {
+					go_out_if = true;
+				}
+				if (!go_out_if && ans == Stay && avoid_friend) {
 					avoid_failed = true;
 					get_stupid_action(tank_id ^ 1);
 				}
 			}
-			if (shoot_friend(side, tank_id, fx, fy) && !avoid_failed)
-				get_stupid_action(tank_id ^ 1);
-			return my_action[tank_id];
+			if (!go_out_if) {
+				if (shoot_friend(side, tank_id, fx, fy) && !avoid_failed)
+					get_stupid_action(tank_id ^ 1);
+				return my_action[tank_id];
+			}
 		}
+		
 		int Ignore_tankid = -1;
 		if (HasMultipleTank(field->gameField[tx][ty])) {
 			int shot_side = IsUniqueDir(side ^ 1, tx, ty);
