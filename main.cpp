@@ -1905,7 +1905,7 @@ namespace TankGame
 				int ans = Stay;//默认不动
 				int gx, gy;
 				bool avoid_friend = min_step_to_base[side][fx][fy] == 1 && shoot_friend(side, tank_id ^ 1, tx, ty);
-				double risk = shot_range[side ^ 1][tx][ty]; //选取为1且射中风险最小的位置
+				double risk = shot_range[side ^ 1][tx][ty], rfactor = GetRandom(); //选取为1且射中风险最小的位置
 				if (avoid_friend) risk = 1000;
 				for (int dir = 0; dir < 4; dir++) {
 					gx = tx + next_step[dir][0];
@@ -1914,12 +1914,12 @@ namespace TankGame
 					if (avoid_friend &&  shoot_friend(side, tank_id ^ 1, gx, gy)) continue;
 					if (ItemIsAccessible(field->gameField[gx][gy], true)) {
 						double temp = shot_range[side ^ 1][gx][gy];
-						if (!avoid_friend) temp += (min_step_to_base[side][gx][gy] - 0.9)*GetRandom(); //1的风险系数比2小很多
+						if (!avoid_friend) temp += (min_step_to_base[side][gx][gy] - 0.9)*rfactor; //1的风险系数比2小很多
 						if (risk > shot_range[side ^ 1][gx][gy]) {
 							risk = shot_range[side ^ 1][gx][gy];
 							ans = dir;
 						}
-						else if (abs(risk-temp)<0.001 && GetRandom() < 0.6) {
+						else if (abs(risk-temp)<1e-7 && GetRandom() < 0.6) {
 							ans = dir; //两个风险一致，则有0.6的概率换方向移动
 						}
 					}
