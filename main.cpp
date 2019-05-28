@@ -1486,14 +1486,7 @@ namespace TankGame
 		//1 敌方坦克不具唯一梯度下降方向，防御时机不好
 		//if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
 		//	return;
-		//2 如果现在的位置已经卡住对面了，那就不管了
-		if (tankStatusAdv[enemySide][enemyTank].blocked)
-		{
-			//有60%的几率改为stay，继续卡住对面
-			if ((rand() % 100) > 40 && my_action[tank] >= 4)
-				my_action[tank] = Stay;
-			return;
-		}
+		
 		//sca要求的特判
 		extern bool stay_for_beat[2];
 		if (stay_for_beat[tank])
@@ -1542,8 +1535,6 @@ namespace TankGame
 			}
 		}
 
-
-	
 
 		//如果不能一步卡到，就提前卡住敌方坦克的最短路，挡差
 		//基地周围一圈必经之路加一点权重
@@ -1635,6 +1626,14 @@ namespace TankGame
 		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f &&
 			min_path[enemySide][enemyTank][y][x] && min_path[mySide][tank][ey][ex])
 			return;
+		//2 如果现在的位置已经卡住对面了，那就不管了
+		if (tankStatusAdv[enemySide][enemyTank].blocked)
+		{
+			//有60%的几率改为stay，继续卡住对面
+			if ((rand() % 100) > 40 && (my_action[tank] >= 4 || !tankStatusAdv[mySide][tank].fireable))
+				my_action[tank] = Stay;
+			return;
+		}
 
 		//这个数组表示有哪些位置能卡住enemyTank，用01表示
 		int blocking_range[9][9];
@@ -2418,7 +2417,7 @@ int main()
 		}
 		//else
 		//撤销防御模式
-		if (TankGame::min_step_to_base[mySide][y][x] <= TankGame::min_step_to_base[mySide ^ 1][ey][ex])
+		if (TankGame::min_step_to_base[mySide][y][x] <= TankGame::min_step_to_base[mySide ^ 1][ey][ex] - 2)
 		{
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
 			continue;
@@ -2436,6 +2435,12 @@ int main()
 		//}
 		/*else*/ if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
 		//	&& TankGame::field->currentTurn>=4)
+		{
+			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
+		}
+		//特判
+		else if (TankGame::field->currentTurn >= 5 && TankGame::mht_dis(x, y, TankGame::baseX[mySide], TankGame::baseY[mySide]) < 3)
 		{
 			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
@@ -2462,5 +2467,6 @@ int main()
 
 	//输出，结束
 	TankGame::encode_data(data);
-	TankGame::SubmitAndExit(act0, act1, "", data);
+	TankGame::SubmitAndExit(act0, act1, data, data);
+
 }
