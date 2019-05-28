@@ -20,6 +20,7 @@
 #include "jsoncpp/json.h"
 #endif
 
+using std::runtime_error;
 using std::string;
 using std::cin;
 using std::cout;
@@ -853,6 +854,43 @@ namespace TankGame
 		}
 		return ans;
 	}
+	//返回标准版
+	bool has_unique_dsc_dir(int side, int x, int y)
+	{
+		int tx, ty;
+		int numDscDir = 0;
+		for (int dir = 0; dir < 4; dir++)
+		{
+			tx = x + dx[dir];
+			ty = y + dy[dir];
+			if (CoordValid(tx, ty))
+			{
+				if (field->gameField[ty][tx] != Steel && field->gameField[ty][tx] != Water)
+					if (min_step_to_base[ty][tx] < min_step_to_base[y][x])
+						numDscDir++;
+			}
+		}
+		return numDscDir == 1;
+	}
+	int get_unique_dsc_dir(int side, int x, int y)
+	{
+		int tx, ty;
+		for (int dir = 0; dir < 4; dir++)
+		{
+			tx = x + dx[dir];
+			ty = y + dy[dir];
+			if (CoordValid(tx, ty))
+			{
+				if (field->gameField[ty][tx] != Steel && field->gameField[ty][tx] != Water)
+					if (min_step_to_base[ty][tx] < min_step_to_base[y][x])
+						return dir;
+			}
+		}
+	}
+	inline bool is_none(int x, int y)
+	{
+		return field->gameField[y][x] == None;
+	}
 	//队友坦克则搜索时权重+2
 	constexpr int tank_weight = 3;
 
@@ -1108,6 +1146,10 @@ namespace TankGame
 		bool blocked = false;//是否被敌方坦克限制住了
 		int consecutive_blocked_terms = 0;//截至上一回合决策结束时，这一坦克被敌方坦克连续卡住的回合数
 		//只在blocked=true时有效；只在我方坦克上有意义；其维护利用了data字段
+
+		bool force_to_defend = false;//强制防御——一旦开启就坚决不进攻，除非对位敌方坦克被干掉了
+		//只对友方坦克有意义，由data字段维护
+		//4回合后，一旦防御一次就会设为true
 	};
 	tagTankStatusAdv tankStatusAdv[sideCount][tankPerSide];
 
@@ -1383,6 +1425,10 @@ namespace TankGame
 			for (int j = 0; j < 9; j++)
 				added[i][j] = added[i][j] + add[i][j];
 	}
+	inline int mht_dis(int x1, int y1, int x2, int y2)
+	{
+		return abs(x1 - x2) + abs(y1 - y2);//曼哈顿距离
+	}
 	void get_revising_defense_act(int tank, int enemyTank)
 	{
 		int mySide = field->mySide;
@@ -1406,9 +1452,16 @@ namespace TankGame
 		if (tankStatusAdv[enemySide][enemyTank].blocked)
 		{
 			//有60%的几率改为stay，继续卡住对面
-			if((rand()%100)>40)
+			if ((rand() % 100) > 40 && my_action[tank] >= 4)
 				my_action[tank] = Stay;
 			return;
+		}
+		//sca要求的特判
+		extern bool stay_for_beat[2];
+		if (stay_for_beat[tank])
+		{
+			if (my_action[tank] == Stay)
+				return;
 		}
 		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
 		if (tankStatusAdv[mySide][tank].blocked)
@@ -1426,6 +1479,92 @@ namespace TankGame
 
 
 		//核心
+
+		//0 最稳妥的方法：永远卡在敌方坦克的必经之路上，对面就算是天神下凡也别想过去
+		if (has_unique_dsc_dir(enemySide, etx, ety))//得提前一步预判
+		{
+			int dir1 = get_unique_dsc_dir(enemySide, etx, ety);
+			int ettx = etx + dx[dir1];
+			int etty = ety + dy[dir1];//敌人两步后的位置
+
+			//如果已经卡住——那都已经固若金汤了，那就不搞别的防御策略了
+			if (x == ettx && y == etty)
+				return;
+			if (is_none(etx, ety) && is_none(ettx, etty))
+			{
+				for (int dir = 0; dir < 4; dir++)
+				{
+					//四周四个方向
+					int tx = x + dx[dir];
+					int ty = y + dy[dir];
+					if (!CoordValid(tx, ty)) continue;
+					//若往那个方向走能~，则改变策略，进行防御
+					if (tx==ettx && ty==etty && real_shot_range[enemySide][ty][tx] == 0.0f)
+					{
+						if (field->gameField[ty][tx] == Brick)
+							my_action[tank] = (Action)std2sca(dir + 4);
+						else if (field->gameField[ty][tx] == None)
+							my_action[tank] = (Action)std2sca(dir);
+						return;
+					}
+				}
+			}
+		}
+
+
+		//如果不能一步卡到，就提前卡住敌方坦克的最短路，挡差
+		int best_dir = -1;
+		int best_my_value = 0x7fffff;
+		int best_enemy_value = min_path[enemySide][enemyTank][y][x];//原始：和原地呆着不动相比
+																	//得到了blocking_range，然后做进一步决策
+		for (int dir = 0; dir < 4; dir++)
+		{
+			//四周四个方向
+			int tx = x + dx[dir];
+			int ty = y + dy[dir];
+			if (!CoordValid(tx, ty)) continue;
+			//若往那个方向走最有可能（在未来的某一回合）能挡住敌方坦克，则改变策略，进行防御
+			if (min_path[enemySide][enemyTank][ty][tx])
+			{
+				//同时，如果也能减小我离敌方基地距离，那更好
+				//后来注：经实战发现还是不要这一条比较好...
+				/*if (min_step_to_base[mySide][ty][tx] < best_my_value)
+				{
+				best_dir = dir;
+				best_my_value = min_step_to_base[mySide][ty][tx];
+				best_enemy_value = min_path[enemySide][enemyTank][ty][tx];
+				}
+				else if (min_step_to_base[mySide][ty][tx] = best_my_value)
+				{*///往更有可能把对面挡住的方向走
+				if (min_path[enemySide][enemyTank][ty][tx] > best_enemy_value)
+				{
+					best_dir = dir;
+					//best_my_value = min_step_to_base[mySide][ty][tx];
+					best_enemy_value = min_path[enemySide][enemyTank][ty][tx];
+				}
+			}
+		}
+		if (best_dir == -1 && best_enemy_value != 0)//若原地已经能很好的挡住，那就不动
+		{
+			if (my_action[tank] >= 0 && my_action[tank] <= 3)
+				my_action[tank] = Stay;
+			return;
+		}
+		if (best_dir != -1)
+		{
+			int tx = x + dx[best_dir];
+			int ty = y + dy[best_dir];
+			//特判：若双方坦克已经很接近，我向前会导致和敌方坦克重合，那挡拆就毫无效果了，那就不挡拆
+			if (field->gameField[ty][tx] == None && (ty == ety && tx == etx))
+				return;
+			if (field->gameField[ty][tx] == Brick)//注意，这里可能需要射击
+				best_dir += 4;
+			my_action[tank] = (Action)std2sca(best_dir);
+			return;
+		}
+
+
+
 		//这个数组表示有哪些位置能卡住enemyTank，用01表示
 		int blocking_range[9][9];
 		memset(blocking_range, 0, sizeof(blocking_range));
@@ -1483,7 +1622,7 @@ namespace TankGame
 				}
 			}
 		}
-		int best_dir = -1;
+		best_dir = -1;
 		int best_blocking_range = 0;
 		//得到了blocking_range，然后做进一步决策
 		for (int dir = 0; dir < 4; dir++)
@@ -1505,66 +1644,27 @@ namespace TankGame
 			return;
 		}
 
-		//还有一手：如果找不到能提前卡住敌方坦克的地方，那就往地方坦克的最短路上走，挡差
 		
-		best_dir = -1;
-		int best_my_value = 0x7fffff;
-		int best_enemy_value = 0;
-		//得到了blocking_range，然后做进一步决策
-		for (int dir = 0; dir < 4; dir++)
-		{
-			//四周四个方向
-			int tx = x + dx[dir];
-			int ty = y + dy[dir];
-			if (!CoordValid(tx, ty)) continue;
-			//若往那个方向走最有可能（在未来的某一回合）能挡住敌方坦克，则改变策略，进行防御
-			if (min_path[enemySide][enemyTank][ty][tx])
-			{
-				//同时，如果也能减小我离敌方基地距离，那更好
-				//后来注：经实战发现还是不要这一条比较好...
-				/*if (min_step_to_base[mySide][ty][tx] < best_my_value)
-				{
-					best_dir = dir;
-					best_my_value = min_step_to_base[mySide][ty][tx];
-					best_enemy_value = min_path[enemySide][enemyTank][ty][tx];
-				}
-				else*/ if (min_step_to_base[mySide][ty][tx] = best_my_value)
-				{//往更有可能把对面挡住的方向走
-					if (min_path[enemySide][enemyTank][ty][tx] > best_enemy_value)
-					{
-						best_dir = dir;
-						best_my_value = min_step_to_base[mySide][ty][tx];
-						best_enemy_value = min_path[enemySide][enemyTank][ty][tx];
-					}
-				}
-			}
-
-		}
-		if (best_dir != -1)
-		{
-			int tx = x + dx[best_dir];
-			int ty = y + dy[best_dir];
-			//特判：若双方坦克已经很接近，我向前会导致和敌方坦克重合，那挡拆就毫无效果了，那就不挡拆
-			if (field->gameField[ty][tx] == None && (ty == ety && tx == etx))
-				return;
-			if (field->gameField[ty][tx] == Brick)//注意，这里可能需要射击
-				best_dir += 4;
-			my_action[tank] = (Action)std2sca(best_dir);
-			return;
-		}
 	}
 
 	void decode_data(string data)
 	{
+		if (field->currentTurn == 1) return;
 		stringstream ss{ data };
 		for (int tank = 0; tank < tankPerSide; tank++)
 			ss >> tankStatusAdv[field->mySide][tank].consecutive_blocked_terms;
+		for (int tank = 0; tank < tankPerSide; tank++)
+			ss >> tankStatusAdv[field->mySide][0].force_to_defend;
+		if (!ss)
+			throw runtime_error{ "error decoding data!" };
 	}
 	void encode_data(string& data)
 	{
 		stringstream ss;
-		ss << tankStatusAdv[field->mySide][0].consecutive_blocked_terms;
-		ss << tankStatusAdv[field->mySide][1].consecutive_blocked_terms;
+		ss << tankStatusAdv[field->mySide][0].consecutive_blocked_terms << " ";
+		ss << tankStatusAdv[field->mySide][1].consecutive_blocked_terms << " ";
+		ss << tankStatusAdv[field->mySide][0].force_to_defend << " ";
+		ss << tankStatusAdv[field->mySide][1].force_to_defend << " ";
 		data = ss.str();
 	}
 	//决策前的预处理
@@ -2135,7 +2235,7 @@ int main()
 
 	//初始化随机种子
 	srand((unsigned)time(nullptr));
-	TankGame::decode_data(data);
+	//TankGame::decode_data(data);
 
 	//预处理，包含了bfs等
 	TankGame::pre_process();
@@ -2164,8 +2264,31 @@ int main()
 		int y = TankGame::field->tankY[mySide][tank];
 		int ex = TankGame::field->tankX[mySide ^ 1][tank ^ 1];
 		int ey = TankGame::field->tankY[mySide ^ 1][tank ^ 1];
-		if (TankGame::field->tankAlive[mySide ^ 1][tank] &&
-			TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
+
+		if (!TankGame::field->tankAlive[mySide ^ 1][tank ^ 1])
+		{
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
+			continue;
+		}
+		//else
+		if ((mySide==0 && y>=5)|| (mySide == 1 && y <= 4))
+		{//撤销防御模式，条件是在敌方半场
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
+			continue;
+		}
+		
+		if ((TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 1//应sca要求，前4回合特判 
+			&& TankGame::field->currentTurn < 4))
+		{
+			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+		}
+		else if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2
+			&& TankGame::field->currentTurn>=4)
+		{
+			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
+		}
+		else if(TankGame::tankStatusAdv[mySide][tank].force_to_defend)
 			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
 	}
 
