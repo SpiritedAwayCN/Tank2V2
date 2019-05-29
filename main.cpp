@@ -1528,7 +1528,10 @@ namespace TankGame
 					if (tx==ettx && ty==etty && real_shot_range[enemySide][ty][tx] == 0.0f)
 					{
 						if (field->gameField[ty][tx] == Brick && real_shot_range[enemySide][y][x] == 0.0f)
-							my_action[tank] = (Action)std2sca(dir + 4);
+							if (tankStatusAdv[mySide][tank].fireable)
+								my_action[tank] = (Action)std2sca(dir + 4);
+							else
+								my_action[tank] = Stay;
 						else if (field->gameField[ty][tx] == None)
 							my_action[tank] = (Action)std2sca(dir);
 						return;
@@ -1547,7 +1550,7 @@ namespace TankGame
 				//min_path[enemySide][enemyTank][0][3] += 1;
 				//min_path[enemySide][enemyTank][0][5] += 1;
 				//min_path[enemySide][enemyTank][1][4] += 1;
-				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey == 0 && ex <= 2)
+				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey >=2 && ex >= 3 && ex<=5)
 					min_path[enemySide][enemyTank][1][4] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey <= 1 && ex >= 6)
 					min_path[enemySide][enemyTank][0][5] += 3;
@@ -1562,11 +1565,11 @@ namespace TankGame
 				else if (ex >= 5)
 					min_path[enemySide][enemyTank][1][5] += 5;
 				else if (ex <= 3)
-					min_path[enemySide][enemyTank][1][5] += 5;
+					min_path[enemySide][enemyTank][1][3] += 5;
 			}
 			else
 			{
-				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey == 0 && ex <= 2)
+				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey <= 7 && ex >= 3 && ex <= 5)
 					min_path[enemySide][enemyTank][7][4] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey >= 7 && ex >= 6)
 					min_path[enemySide][enemyTank][8][5] += 3;
@@ -1625,16 +1628,17 @@ namespace TankGame
 		{
 			int tx = x + dx[best_dir];
 			int ty = y + dy[best_dir];
-			if (real_shot_range[enemySide][ty][tx] > 0.0f)
-				return;
 			//特判：若双方坦克已经很接近，我向前会导致和敌方坦克重合，那挡拆就毫无效果了，那就不挡拆
 			if (field->gameField[ty][tx] == None && (ty == ety && tx == etx))
 				return;
 			if (field->gameField[ty][tx] == Brick && real_shot_range[enemySide][y][x] == 0.0f)//注意，这里可能需要射击
 			{
-				my_action[tank] = (Action)std2sca(best_dir+4);
+				if (tankStatusAdv[mySide][tank].fireable)
+					my_action[tank] = (Action)std2sca(best_dir + 4);
+				else
+					my_action[tank] = Stay;
 			}
-			else
+			else if (real_shot_range[enemySide][ty][tx] == 0.0f)
 				my_action[tank] = (Action)std2sca(best_dir);
 			return;
 		}
