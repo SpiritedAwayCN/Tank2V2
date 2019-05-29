@@ -1167,6 +1167,7 @@ namespace TankGame
 
 		//考虑双方坦克干扰
 		bool blocked = false;//是否被敌方坦克限制住了
+		bool blocked_beyond_wall = false;
 		int consecutive_blocked_terms = 0;//截至上一回合决策结束时，这一坦克被敌方坦克连续卡住的回合数
 		//只在blocked=true时有效；只在我方坦克上有意义；其维护利用了data字段
 
@@ -1387,10 +1388,11 @@ namespace TankGame
 				if (blocked) continue;
 
 				//第二种情况：我和敌方坦克只有一墙之隔，谁先射谁倒霉
-				blocked = true;
+				bool blocked_beyond_wall = tankStatusAdv[side][tank].blocked_beyond_wall;
+				blocked_beyond_wall = true;
 				//这有两个条件，1 我有一堵要射的墙在我的最短路上
-				blocked = blocked && (tankStatusAdv[side][tank].numDscDir == 1);
-				if (blocked) blocked = blocked && (field->gameField[t.ty][t.tx] == Brick);
+				blocked_beyond_wall = blocked_beyond_wall && (tankStatusAdv[side][tank].numDscDir == 1);
+				if (blocked_beyond_wall) blocked_beyond_wall = blocked_beyond_wall && (field->gameField[t.ty][t.tx] == Brick);
 				//2 墙的后面有一个敌方坦克——大约等价于，这堵墙在地方射程范围内
 				int ex = t.tx + dx[t.dscDir];
 				int ey = t.ty + dy[t.dscDir];//可能的敌人的位置
@@ -1407,7 +1409,7 @@ namespace TankGame
 					}
 				}
 			_tmp_finished:
-				blocked = blocked && dangerousEnemyBehindWall;
+				blocked_beyond_wall = blocked_beyond_wall && dangerousEnemyBehindWall;
 			}
 		}
 
@@ -1493,6 +1495,11 @@ namespace TankGame
 		//if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
 		//	return;
 		
+		if (tankStatusAdv[enemySide][enemyTank].blocked_beyond_wall)
+		{
+			return;
+		}
+
 		//sca要求的特判
 		extern bool stay_for_beat[2];
 		if (stay_for_beat[tank])
@@ -1500,9 +1507,7 @@ namespace TankGame
 			if (my_action[tank] == Stay)
 				return;
 		}
-		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
-		if (tankStatusAdv[mySide][tank].blocked)
-			return;
+		
 		
 		
 
@@ -1534,7 +1539,10 @@ namespace TankGame
 					if (tx==ettx && ty==etty && real_shot_range[enemySide][ty][tx] == 0.0f)
 					{
 						if (field->gameField[ty][tx] == Brick && real_shot_range[enemySide][y][x] == 0.0f)
-							my_action[tank] = (Action)std2sca(dir + 4);
+							if (tankStatusAdv[mySide][tank].fireable)
+								my_action[tank] = (Action)std2sca(dir + 4);
+							else
+								my_action[tank] = Stay;
 						else if (field->gameField[ty][tx] == None)
 							my_action[tank] = (Action)std2sca(dir);
 						return;
@@ -1553,7 +1561,7 @@ namespace TankGame
 				//min_path[enemySide][enemyTank][0][3] += 1;
 				//min_path[enemySide][enemyTank][0][5] += 1;
 				//min_path[enemySide][enemyTank][1][4] += 1;
-				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey == 0 && ex <= 2)
+				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey >=2 && ex >= 3 && ex<=5)
 					min_path[enemySide][enemyTank][1][4] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey <= 1 && ex >= 6)
 					min_path[enemySide][enemyTank][0][5] += 3;
@@ -1568,11 +1576,11 @@ namespace TankGame
 				else if (ex >= 5)
 					min_path[enemySide][enemyTank][1][5] += 5;
 				else if (ex <= 3)
-					min_path[enemySide][enemyTank][1][5] += 5;
+					min_path[enemySide][enemyTank][1][3] += 5;
 			}
 			else
 			{
-				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey == 0 && ex <= 2)
+				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey <= 7 && ex >= 3 && ex <= 5)
 					min_path[enemySide][enemyTank][7][4] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey >= 7 && ex >= 6)
 					min_path[enemySide][enemyTank][8][5] += 3;
@@ -1631,16 +1639,17 @@ namespace TankGame
 		{
 			int tx = x + dx[best_dir];
 			int ty = y + dy[best_dir];
-			if (real_shot_range[enemySide][ty][tx] > 0.0f)
-				return;
 			//特判：若双方坦克已经很接近，我向前会导致和敌方坦克重合，那挡拆就毫无效果了，那就不挡拆
 			if (field->gameField[ty][tx] == None && (ty == ety && tx == etx))
 				return;
 			if (field->gameField[ty][tx] == Brick && real_shot_range[enemySide][y][x] == 0.0f)//注意，这里可能需要射击
 			{
-				my_action[tank] = (Action)std2sca(best_dir+4);
+				if (tankStatusAdv[mySide][tank].fireable)
+					my_action[tank] = (Action)std2sca(best_dir + 4);
+				else
+					my_action[tank] = Stay;
 			}
-			else
+			else if (field->gameField[ty][tx] == None && real_shot_range[enemySide][ty][tx] == 0.0f)
 				my_action[tank] = (Action)std2sca(best_dir);
 			return;
 		}
@@ -1648,53 +1657,56 @@ namespace TankGame
 		//额外特判：如果现在有生命危险...那还是交给能保命的通用AI吧（这来自于某个bug）
 		if (real_shot_range[enemySide][y][x] > 0.0f)
 			return;
+		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
+		//if (tankStatusAdv[mySide][tank].blocked)
+		//	return;
 		//经验证明，这一手最好在还没开打的时候弄...不然打起来了再玩这个实在是过于愚蠢
 		//参考：https://www.botzone.org.cn/match/5ce988e3d2337e01c7aca364
 		//判断交火互卡：我方坦克与敌方坦克互相在射程中，且互相在对方的最短路上
 		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f &&
 			min_path[enemySide][enemyTank][y][x] && min_path[mySide][tank][ey][ex])
 			return;
-		//2 如果现在的位置已经卡住对面了，那就不管了
-		if (tankStatusAdv[enemySide][enemyTank].blocked)
-		{
-			//有60%的几率改为stay，继续卡住对面
-			if ((rand() % 100) > 40 && (my_action[tank] >= 4 || !tankStatusAdv[mySide][tank].fireable))
-				my_action[tank] = Stay;
-			return;
-		}
+		////2 如果现在的位置已经卡住对面了，那就不管了
+		//if (tankStatusAdv[enemySide][enemyTank].blocked)
+		//{
+		//	//有60%的几率改为stay，继续卡住对面
+		//	if ((rand() % 100) > 40 && (my_action[tank] >= 4 || !tankStatusAdv[mySide][tank].fireable))
+		//		my_action[tank] = Stay;
+		//	return;
+		//}
 
-		//这个数组表示有哪些位置能卡住enemyTank，用01表示
-		int blocking_range[9][9];
-		memset(blocking_range, 0, sizeof(blocking_range));
-		//注意，现在走的一步是为了下一步卡住敌方坦克，所以计算的是地方坦克路径上的位置的blocking-range.
-		//能卡住敌方坦克，有这几种种情况：
+		////这个数组表示有哪些位置能卡住enemyTank，用01表示
+		//int blocking_range[9][9];
+		//memset(blocking_range, 0, sizeof(blocking_range));
+		////注意，现在走的一步是为了下一步卡住敌方坦克，所以计算的是地方坦克路径上的位置的blocking-range.
+		////能卡住敌方坦克，有这几种种情况：
 
-		//如果能在一步之遥之内卡住敌方坦克，那最好
-		//1 能把对面坦克简单地卡住（一步之内）
-		if(etx!=4)//中线特判：如果对面已经到我方中线上了...那就不卡移动位置了，因为卡不住，对面直接推家就好了
-			generate_shot_range(etx,ety, blocking_range);
+		////如果能在一步之遥之内卡住敌方坦克，那最好
+		////1 能把对面坦克简单地卡住（一步之内）
+		//if(etx!=4)//中线特判：如果对面已经到我方中线上了...那就不卡移动位置了，因为卡不住，对面直接推家就好了
+		//	generate_shot_range(etx,ety, blocking_range);
 	
-		//2 两个坦克一墙之隔，谁先射墙谁马上倒霉
-		if (field->gameField[ety][etx] == Brick)
-		{
-			int tx = 2 * etx - ex;//墙对面的位置
-			int ty = 2 * ety - ey;
-			if (CoordValid(tx, ty))
-				if (field->gameField[ty][tx] == None)
-					blocking_range[ty][tx] = 1;
-		}
-		for (int dir = 0; dir < 4; dir++)
-		{
-			//四周四个方向
-			int tx = x + dx[dir];
-			int ty = y + dy[dir];
-			if (!CoordValid(tx, ty)) continue;
-			//若往那个方向走最能卡住敌方坦克，则改变策略，进行防御
-			if (blocking_range[ty][tx])
-			{
-				my_action[tank] = (Action)std2sca(dir);
-			}
-		}
+		////2 两个坦克一墙之隔，谁先射墙谁马上倒霉
+		//if (field->gameField[ety][etx] == Brick)
+		//{
+		//	int tx = 2 * etx - ex;//墙对面的位置
+		//	int ty = 2 * ety - ey;
+		//	if (CoordValid(tx, ty))
+		//		if (field->gameField[ty][tx] == None)
+		//			blocking_range[ty][tx] = 1;
+		//}
+		//for (int dir = 0; dir < 4; dir++)
+		//{
+		//	//四周四个方向
+		//	int tx = x + dx[dir];
+		//	int ty = y + dy[dir];
+		//	if (!CoordValid(tx, ty)) continue;
+		//	//若往那个方向走最能卡住敌方坦克，则改变策略，进行防御
+		//	if (blocking_range[ty][tx])
+		//	{
+		//		my_action[tank] = (Action)std2sca(dir);
+		//	}
+		//}
 
 
 		////一步之内卡不到，则考虑后面几步
