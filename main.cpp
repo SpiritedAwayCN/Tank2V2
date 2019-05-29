@@ -1542,7 +1542,7 @@ namespace TankGame
 
 		//如果不能一步卡到，就提前卡住敌方坦克的最短路，挡差
 		//基地周围一圈必经之路加一点权重
-		if (field->currentTurn > 5)
+		if (field->currentTurn > 7)
 		{
 			if (mySide == Blue)
 			{
@@ -1556,9 +1556,9 @@ namespace TankGame
 				else if (ex == 4)
 					min_path[enemySide][enemyTank][1][4] += 1;
 				else if (ex >= 5)
-					min_path[enemySide][enemyTank][1][5] += 1;
+					min_path[enemySide][enemyTank][1][5] += 5;
 				else if (ex <= 3)
-					min_path[enemySide][enemyTank][1][5] += 1;
+					min_path[enemySide][enemyTank][1][5] += 5;
 			}
 			else
 			{
@@ -1569,9 +1569,9 @@ namespace TankGame
 				else if (ex == 4)
 					min_path[enemySide][enemyTank][7][4] += 1;
 				else if (ex >= 5)
-					min_path[enemySide][enemyTank][7][5] += 1;
+					min_path[enemySide][enemyTank][7][5] += 5;
 				else if (ex <= 3)
-					min_path[enemySide][enemyTank][7][3] += 1;
+					min_path[enemySide][enemyTank][7][3] += 5;
 			}
 		}
 		int best_dir = -1;
