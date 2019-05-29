@@ -1649,7 +1649,7 @@ namespace TankGame
 				else
 					my_action[tank] = Stay;
 			}
-			else if (real_shot_range[enemySide][ty][tx] == 0.0f)
+			else if (field->gameField[ty][tx] == None && real_shot_range[enemySide][ty][tx] == 0.0f)
 				my_action[tank] = (Action)std2sca(best_dir);
 			return;
 		}
@@ -2513,6 +2513,11 @@ int main()
 	//2 目前，进行防御决策的条件是我方坦克到敌方基地的距离，比，敌方（同边）坦克到我方基地的距离，至少大2；且地方坦克存活
 	//这里可以修改。
 	int mySide = TankGame::field->mySide;
+	//缓存
+	int my_action_cache[2];
+	for (int tank = 0; tank < 2; tank++)
+		my_action_cache[tank] = TankGame::my_action[tank];
+	//优先对位防御
 	for (int tank = 0; tank < TankGame::tankPerSide; tank++)
 	{
 		int x = TankGame::field->tankX[mySide][tank];
@@ -2521,6 +2526,57 @@ int main()
 		int ey = TankGame::field->tankY[mySide ^ 1][tank ^ 1];
 
 		if (!TankGame::field->tankAlive[mySide ^ 1][tank ^ 1])
+		{
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
+			continue;
+		}
+		//else
+		//撤销防御模式
+		if (TankGame::min_step_to_base[mySide][y][x] <= TankGame::min_step_to_base[mySide ^ 1][ey][ex] - 2)
+		{
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
+			continue;
+		}
+		if ((mySide == 0 && y >= 5) || (mySide == 1 && y <= 4))
+		{//撤销防御模式，条件是在敌方半场
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
+			continue;
+		}
+
+		//if ((TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 1//应sca要求，前4回合特判 
+		//	&& TankGame::field->currentTurn < 4))
+		//{
+		//	TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+		//}
+		/*else*/ if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
+			//	&& TankGame::field->currentTurn>=4)
+		{
+			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
+		}
+		//特判
+		else if (TankGame::field->currentTurn >= 7 && TankGame::mht_dis(x, y, TankGame::baseX[mySide], TankGame::baseY[mySide]) < 3)
+		{
+			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
+		}
+		else if (TankGame::tankStatusAdv[mySide][tank].force_to_defend)
+			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+	}
+	//跨边防御
+	for (int tank = 0; tank < TankGame::tankPerSide; tank++)
+	{
+
+		//尊重对位防御的决定
+		if(my_action_cache[tank] != TankGame::my_action[tank]) continue;
+
+
+		int x = TankGame::field->tankX[mySide][tank];
+		int y = TankGame::field->tankY[mySide][tank];
+		int ex = TankGame::field->tankX[mySide ^ 1][tank];
+		int ey = TankGame::field->tankY[mySide ^ 1][tank];
+
+		if (!TankGame::field->tankAlive[mySide][tank])
 		{
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = false;
 			continue;
@@ -2546,18 +2602,20 @@ int main()
 		/*else*/ if (TankGame::min_step_to_base[mySide][y][x] >= TankGame::min_step_to_base[mySide ^ 1][ey][ex] + 2)
 		//	&& TankGame::field->currentTurn>=4)
 		{
-			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+			TankGame::get_revising_defense_act(tank, tank);//防御跨边坦克
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
 		}
 		//特判
 		else if (TankGame::field->currentTurn >= 7 && TankGame::mht_dis(x, y, TankGame::baseX[mySide], TankGame::baseY[mySide]) < 3)
 		{
-			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+			TankGame::get_revising_defense_act(tank, tank);//防御同边坦克
 			TankGame::tankStatusAdv[mySide][tank].force_to_defend = true;
 		}
 		else if(TankGame::tankStatusAdv[mySide][tank].force_to_defend)
-			TankGame::get_revising_defense_act(tank, tank ^ 1);//防御同边坦克
+			TankGame::get_revising_defense_act(tank, tank);//防御同边坦克
 	}
+		
+		
 
 	//lcj: ?????
 	//任务：历史位置记录 坦克对峙模式
