@@ -1507,7 +1507,7 @@ namespace TankGame
 		//核心
 		//0 最稳妥的方法：永远卡在敌方坦克的必经之路上，对面就算是天神下凡也别想过去
 		//if (has_unique_dsc_dir(enemySide, etx, ety))//得提前一步预判
-		if(has_unique_dsc_dir(enemySide,etx,ety))
+		if(has_unique_dsc_dir(enemySide, ex, ey) && has_unique_dsc_dir(enemySide,etx,ety))
 		{
 			int dir1 = get_unique_dsc_dir(enemySide, etx, ety);
 			int ettx = etx + dx[dir1];
