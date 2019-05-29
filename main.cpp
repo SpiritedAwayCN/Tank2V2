@@ -1549,7 +1549,9 @@ namespace TankGame
 				//min_path[enemySide][enemyTank][0][3] += 1;
 				//min_path[enemySide][enemyTank][0][5] += 1;
 				//min_path[enemySide][enemyTank][1][4] += 1;
-				if (ey == 0 && ex >= 6)
+				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey == 0 && ex <= 2)
+					min_path[enemySide][enemyTank][1][4] += 1;
+				else if (ey == 0 && ex >= 6)
 					min_path[enemySide][enemyTank][0][5] += 1;
 				else if (ey == 0 && ex <= 2)
 					min_path[enemySide][enemyTank][0][3] += 1;
@@ -1562,7 +1564,9 @@ namespace TankGame
 			}
 			else
 			{
-				if (ey == 8 && ex >= 6)
+				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey == 0 && ex <= 2)
+					min_path[enemySide][enemyTank][7][4] += 1;
+				else if (ey == 8 && ex >= 6)
 					min_path[enemySide][enemyTank][8][5] += 1;
 				else if (ey == 8 && ex <= 2)
 					min_path[enemySide][enemyTank][8][3] += 1;
