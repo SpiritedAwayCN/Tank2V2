@@ -1666,14 +1666,14 @@ namespace TankGame
 		if (shot_range[enemySide][y][x] >= 0.0f && shot_range[mySide][ey][ex] >= 0.0f &&
 			min_path[enemySide][enemyTank][y][x] && min_path[mySide][tank][ey][ex])
 			return;
-		////2 如果现在的位置已经卡住对面了，那就不管了
-		//if (tankStatusAdv[enemySide][enemyTank].blocked)
-		//{
-		//	//有60%的几率改为stay，继续卡住对面
-		//	if ((rand() % 100) > 40 && (my_action[tank] >= 4 || !tankStatusAdv[mySide][tank].fireable))
-		//		my_action[tank] = Stay;
-		//	return;
-		//}
+		//2 如果现在的位置已经卡住对面了，那就不管了
+		if (tankStatusAdv[enemySide][enemyTank].blocked)
+		{
+			//有60%的几率改为stay，继续卡住对面
+			if ((rand() % 100) > 40 && (my_action[tank] >= 4 || !tankStatusAdv[mySide][tank].fireable))
+				my_action[tank] = Stay;
+			return;
+		}
 
 		////这个数组表示有哪些位置能卡住enemyTank，用01表示
 		//int blocking_range[9][9];
