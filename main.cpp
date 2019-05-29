@@ -1862,7 +1862,7 @@ namespace TankGame
 			for (int bias = -1; bias <= 1; bias++) {
 				if (dir >= 2) {//左右
 					if (ty == uc && bias)continue;
-					if (uc == wj) continue;
+					//if (uc == wj) continue;
 					if (uc > min(ty, wj) && uc < max(ty, wj)) continue;
 					if (CoordValid(tx + bias, uc) && ((IsTank(field->gameField[tx + bias][uc]) && GetTankSide(field->gameField[tx + bias][uc]) != side)
 						|| HasMultipleTank(field->gameField[tx + bias][uc])))
