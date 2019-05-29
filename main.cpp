@@ -1167,6 +1167,7 @@ namespace TankGame
 
 		//考虑双方坦克干扰
 		bool blocked = false;//是否被敌方坦克限制住了
+		bool blocked_beyond_wall = false;
 		int consecutive_blocked_terms = 0;//截至上一回合决策结束时，这一坦克被敌方坦克连续卡住的回合数
 		//只在blocked=true时有效；只在我方坦克上有意义；其维护利用了data字段
 
@@ -1387,10 +1388,11 @@ namespace TankGame
 				if (blocked) continue;
 
 				//第二种情况：我和敌方坦克只有一墙之隔，谁先射谁倒霉
-				blocked = true;
+				bool blocked_beyond_wall = tankStatusAdv[side][tank].blocked_beyond_wall;
+				blocked_beyond_wall = true;
 				//这有两个条件，1 我有一堵要射的墙在我的最短路上
-				blocked = blocked && (tankStatusAdv[side][tank].numDscDir == 1);
-				if (blocked) blocked = blocked && (field->gameField[t.ty][t.tx] == Brick);
+				blocked_beyond_wall = blocked_beyond_wall && (tankStatusAdv[side][tank].numDscDir == 1);
+				if (blocked_beyond_wall) blocked_beyond_wall = blocked_beyond_wall && (field->gameField[t.ty][t.tx] == Brick);
 				//2 墙的后面有一个敌方坦克——大约等价于，这堵墙在地方射程范围内
 				int ex = t.tx + dx[t.dscDir];
 				int ey = t.ty + dy[t.dscDir];//可能的敌人的位置
@@ -1407,7 +1409,7 @@ namespace TankGame
 					}
 				}
 			_tmp_finished:
-				blocked = blocked && dangerousEnemyBehindWall;
+				blocked_beyond_wall = blocked_beyond_wall && dangerousEnemyBehindWall;
 			}
 		}
 
@@ -1493,6 +1495,11 @@ namespace TankGame
 		//if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
 		//	return;
 		
+		if (tankStatusAdv[enemySide][enemyTank].blocked_beyond_wall)
+		{
+			return;
+		}
+
 		//sca要求的特判
 		extern bool stay_for_beat[2];
 		if (stay_for_beat[tank])
