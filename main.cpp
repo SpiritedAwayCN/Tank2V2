@@ -2009,7 +2009,7 @@ namespace TankGame
 				if (ans >= 0 && !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)) break;
 				//若这个tank上回合发射了子弹，先存着，看看有没有其他
 			}
-			if (ans >= 0 && !force_move_mode){
+			if (ans >= 0 && !force_move_mode) {
 				if (min_step_to_base[side][tx][ty] <= min_step_to_base[side ^ 1][etx][ety]) {
 					if (!(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)) {
 						//我方更近，尽可能不参与对峙（若这个tank上回合发过子弹则忽略tank对峙，不进入此if）
@@ -2027,21 +2027,23 @@ namespace TankGame
 								}
 							}
 						}
-						if (mrisk > 0 || min_step_to_base[side][tx][ty] <= mdis || min_step_to_base[side][tx][ty]>min_step_to_base[side][fx][fy])
-							{ my_action[tank_id] = ans + 4; return my_action[tank_id];} //保命第一位，干
-						else { my_action[tank_id] = ans2; return my_action[tank_id];} //朝0风险中 最低的走
+						if (mrisk > 0 || min_step_to_base[side][tx][ty] <= mdis || min_step_to_base[side][tx][ty] > min_step_to_base[side][fx][fy])
+						{
+							my_action[tank_id] = ans + 4; return my_action[tank_id];
+						} //保命第一位，干
+						else { my_action[tank_id] = ans2; return my_action[tank_id]; } //朝0风险中 最低的走
 					}
-					else if(min_step_to_base[side][tx][ty]>=min_step_to_base[side][etx][ety]){ //对方tank离对方基地更近
+					else if (min_step_to_base[side][tx][ty] >= min_step_to_base[side][etx][ety]) { //对方tank离对方基地更近
 						my_action[tank_id] = ans + 4; return my_action[tank_id]; //干他
 					}
 				}
-				else{
+				else {
 					//对方更近，直接上
 					/*
 					int shoot_range1 = IsUniqueDir(side, tx, ty), shoot_range2 = IsUniqueDir(side ^ 1, etx, ety);
 					if ((shoot_range1 > 0 && InShootRange(etx, ety, tx + next_step[shoot_range1][0], ty + next_step[shoot_range1][1]))
 						|| (shoot_range2 >0 && InShootRange(tx,ty,etx+next_step[shoot_range2][0],ety+next_step[shoot_range2][1])) )*/
-						{my_action[tank_id] = ans + 4; return my_action[tank_id]; }
+					{my_action[tank_id] = ans + 4; return my_action[tank_id]; }
 				}
 			}
 			else if (ans >= 0 && force_move_mode && !(field->previousActions[field->currentTurn - 1][side ^ 1][tid] > Left)) {
@@ -2061,7 +2063,8 @@ namespace TankGame
 				}
 				my_action[tank_id] = ans2; return my_action[tank_id];
 			}
-			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] >= min_step_to_base[side^1][etx][ety] && (etx - 4)*(side-0.5)>=0) {
+			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][etx][ety] && (etx - 4)*(side - 0.5) >= 0
+				&& (etx - tx)*(side - 0.5) >= 0) {
 				stay_for_beat[tank_id] = true;
 			}
 			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] < min_step_to_base[side ^ 1][tx][ty]
@@ -2168,8 +2171,10 @@ namespace TankGame
 
 					if ((side == 0 && ii < fieldHeight / 2) || (side == 1 && ii > fieldHeight / 2))shot_weight[dir] *= 0.9; //己方半场射击概率更低 
 					else shot_weight[dir] *= 2; //对方半场的射率更高
-					if (shot_range[side ^ 1][ii][jj] > 0)
+					if (shot_range[side ^ 1][ii][jj] > 0) {
 						shot_weight[dir] *= 0.3;
+					}
+						
 					int wi = ii, wj = jj;
 					//以下：本次射击后，不能在射击方向（与反方向）上进入对方射程
 					ii += next_step[dir][0], jj += next_step[dir][1];
@@ -2295,6 +2300,8 @@ namespace TankGame
 
 
 		shot_dir = IsUniqueDir(side, tx, ty);
+
+
 		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是射击，则方案+4
 		else if (min_step_to_base[side][tx][ty] < min_step_to_base[side][tx + next_step[ans][0]][ty + next_step[ans][1]]
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]] + 0.1 + 0.1 * GetRandom())
@@ -2305,7 +2312,7 @@ namespace TankGame
 			&& real_shot_range[side ^ 1][tx][ty] < real_shot_range[side ^ 1][tx + next_step[ans][0]][ty + next_step[ans][1]])
 			my_action[tank_id] = Stay;
 		else if (shot_dir >= 0&& ans==shot_dir && real_shot_range[side^1][tx + next_step[ans][0]][ty + next_step[ans][1]] >0.0001) {
-			int tid = -1, count, count_dont_move;
+			int tid = -1, count, count_dont_move, count_my_stay;
 			for (int i = 0; i < tankPerSide; i++) {
 				if (InShootRange(field->tankY[side ^ 1][i], field->tankX[side ^ 1][i], tx + next_step[ans][0], ty + next_step[ans][1])) {
 					if (tid >= 0) break;
@@ -2318,17 +2325,21 @@ namespace TankGame
 			for (count_dont_move = 1; count_dont_move <= field->currentTurn - 1; count_dont_move++) {
 				if (field->previousActions[field->currentTurn - count_dont_move][side][tank_id] <= Left && field->previousActions[field->currentTurn - count_dont_move][side][tank_id]>=Up) break;
 			}
+			for (count_my_stay = 1; count_my_stay <= field->currentTurn - 1 && tid >= 0; count_my_stay++) {
+				if (field->previousActions[field->currentTurn - count_my_stay][side][tank_id] != Stay) break;
+			}
 			if (tid >= 0 && field->tankY[side ^ 1][tid] == tx && field->tankX[side ^ 1][tid] == ty) {
 				
 				if ((count > 2 + int(GetRandom()*1.8) && min_step_to_base[side][tx][ty]<=min_step_to_base[side^1][tx][ty]) || Ignore_tankid == tid)
 					return my_action[tank_id];
+
 			}
-			if (tid >= 0 && (count > 3 + int(GetRandom()*1.7) || count_dont_move >= 25) && count_dont_move > 3 + int(GetRandom()*1.7)) {
+			if (tid >= 0 && (count > 3 + int(GetRandom()*1.7) || count_my_stay >= 25) && count_dont_move > 3 + int(GetRandom()*1.7)) {
 				// 3或4回合若对方不动，则忽略
 				return my_action[tank_id];
 			}
 			// El 执行到此处，表明最短路唯一下降前方在敌方射程内，并且一定不会往前走了
-			// 由于已经别中move，以下将尝试2次看是否能别中向该方向射击，否则改为Stay
+				// 由于已经别中move，以下将尝试2次看是否能别中向该方向射击，否则改为Stay
 			int try_max_count = 2;
 			while (shot_weight[ans] < GetRandom() && try_max_count) {
 				try_max_count--;
@@ -2336,7 +2347,7 @@ namespace TankGame
 			if (!try_max_count) {
 				my_action[tank_id] = Stay;
 			}
-			else{
+			else {
 				my_action[tank_id] += 4;
 			}
 		}
