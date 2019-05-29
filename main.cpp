@@ -2040,8 +2040,20 @@ namespace TankGame
 			for (int dir = 0; dir < 4; dir++) {
 				for (int ii = tx, jj = ty; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
 					if (fx == ii && fy == jj)break; //停火，友军！
-					if (IsTank(field->gameField[ii][jj]) && GetTankSide(field->gameField[ii][jj]) != side) {
-						tid = GetTankID(field->gameField[ii][jj]);
+
+					if ((IsTank(field->gameField[ii][jj]) && GetTankSide(field->gameField[ii][jj]) != side)
+						|| HasMultipleTank(field->gameField[ii][jj])) {
+						tid = GetTankID(field->gameField[ii][jj]);  //经过了友军特判，就算是重合坦克一定没有友军
+						if (HasMultipleTank(field->gameField[ii][jj])) {
+							tid = -1;
+							for (int ttid = 0; ttid < tankPerSide; ttid++) {
+								if (field->tankY[side ^ 1][ttid] == ii && field->tankX[side ^ 1][ttid] == jj) {
+									if (tid < 0 || !(field->previousActions[field->currentTurn - 1][side ^ 1][ttid] > Left))
+										tid = ttid;
+								}
+							}
+							if (tid < 0)break;
+						}
 						ans = dir; etx = ii; ety = jj;
 						break;
 					} //敌军，上！
