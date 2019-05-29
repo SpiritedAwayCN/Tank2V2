@@ -1389,7 +1389,7 @@ namespace TankGame
 				if (blocked) continue;
 
 				//第二种情况：我和敌方坦克只有一墙之隔，谁先射谁倒霉
-				bool blocked_beyond_wall = tankStatusAdv[side][tank].blocked_beyond_wall;
+				bool& blocked_beyond_wall = tankStatusAdv[side][tank].blocked_beyond_wall;
 				blocked_beyond_wall = true;
 				//这有两个条件，1 我有一堵要射的墙在我的最短路上
 				blocked_beyond_wall = blocked_beyond_wall && (tankStatusAdv[side][tank].numDscDir == 1);
@@ -1496,7 +1496,8 @@ namespace TankGame
 		//if (tankStatusAdv[enemySide][enemyTank].numDscDir != 1)
 		//	return;
 		
-		if (tankStatusAdv[enemySide][enemyTank].blocked_beyond_wall)
+		if (tankStatusAdv[enemySide][enemyTank].blocked_beyond_wall
+			|| tankStatusAdv[mySide][tank].blocked_beyond_wall)
 		{
 			return;
 		}
