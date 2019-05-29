@@ -1496,9 +1496,7 @@ namespace TankGame
 			if (my_action[tank] == Stay)
 				return;
 		}
-		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
-		if (tankStatusAdv[mySide][tank].blocked)
-			return;
+		
 		
 		
 
@@ -1643,6 +1641,9 @@ namespace TankGame
 
 		//额外特判：如果现在有生命危险...那还是交给能保命的通用AI吧（这来自于某个bug）
 		if (real_shot_range[enemySide][y][x] > 0.0f)
+			return;
+		//3 我方坦克被卡住了——这基本意味着向前走就是挨敌方坦克的打
+		if (tankStatusAdv[mySide][tank].blocked)
 			return;
 		//经验证明，这一手最好在还没开打的时候弄...不然打起来了再玩这个实在是过于愚蠢
 		//参考：https://www.botzone.org.cn/match/5ce988e3d2337e01c7aca364
