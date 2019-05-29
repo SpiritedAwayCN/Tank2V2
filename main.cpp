@@ -904,6 +904,7 @@ namespace TankGame
 		}
 		if (best_dir != -1)
 			return best_dir;
+		return -1;
 	}
 	inline bool is_none(int x, int y)
 	{
@@ -1179,7 +1180,8 @@ namespace TankGame
 	{
 		if (side == Red)
 			return (field->gameField[y][x] & Blue0) || (field->gameField[y][x] & Blue1);
-		if (side == Blue)
+		//if (side == Blue)
+		else
 			return (field->gameField[y][x] & Red0) || (field->gameField[y][x] & Red1);
 	}
 	bool enemy_may_arrive(int mySide,int x, int y)
@@ -1512,6 +1514,8 @@ namespace TankGame
 			int etty = ety + dy[dir1];//敌人两步后的位置
 
 			//如果已经卡住——那都已经固若金汤了，那就不搞别的防御策略了
+			if (x == etx && y == ety)
+				return;
 			if (x == ettx && y == etty)
 				return;
 			if (is_none(etx, ety) && is_none(ettx, etty))
@@ -1525,7 +1529,7 @@ namespace TankGame
 					//若往那个方向走能~，则改变策略，进行防御
 					if (tx==ettx && ty==etty && real_shot_range[enemySide][ty][tx] == 0.0f)
 					{
-						if (field->gameField[ty][tx] == Brick)
+						if (field->gameField[ty][tx] == Brick && real_shot_range[enemySide][y][x] == 0.0f)
 							my_action[tank] = (Action)std2sca(dir + 4);
 						else if (field->gameField[ty][tx] == None)
 							my_action[tank] = (Action)std2sca(dir);
@@ -1611,9 +1615,12 @@ namespace TankGame
 			//特判：若双方坦克已经很接近，我向前会导致和敌方坦克重合，那挡拆就毫无效果了，那就不挡拆
 			if (field->gameField[ty][tx] == None && (ty == ety && tx == etx))
 				return;
-			if (field->gameField[ty][tx] == Brick)//注意，这里可能需要射击
-				best_dir += 4;
-			my_action[tank] = (Action)std2sca(best_dir);
+			if (field->gameField[ty][tx] == Brick && real_shot_range[enemySide][y][x] == 0.0f)//注意，这里可能需要射击
+			{
+				my_action[tank] = (Action)std2sca(best_dir+4);
+			}
+			else
+				my_action[tank] = (Action)std2sca(best_dir);
 			return;
 		}
 
@@ -2443,7 +2450,7 @@ int main()
 	//初始化随机种子
 	srand((unsigned)time(nullptr));
 #ifdef _BOTZONE_ONLINE
-	TankGame::decode_data(data);
+	//TankGame::decode_data(data);
 #endif
 	//预处理，包含了bfs等
 	TankGame::pre_process();
@@ -2529,7 +2536,8 @@ int main()
 	}
 
 	//输出，结束
-	TankGame::encode_data(data);
+	//TankGame::encode_data(data);
 	TankGame::SubmitAndExit(act0, act1, data, data);
 
 }
+
