@@ -893,7 +893,7 @@ namespace TankGame
 			ty = y + dy[dir];
 			if (!CoordValid(tx, ty)) continue;
 			if (field->gameField[ty][tx] == Steel || field->gameField[ty][tx] == Water || 
-				field->gameField[ty][tx] == Base || has_tank(tx, ty))
+				field->gameField[ty][tx] == Base )
 				continue;
 
 			int delta = min_step_to_base[side][y][x] - min_step_to_base[side][ty][tx];
@@ -1518,15 +1518,18 @@ namespace TankGame
 		//核心
 		//0 最稳妥的方法：永远卡在敌方坦克的必经之路上，对面就算是天神下凡也别想过去
 		//if (has_unique_dsc_dir(enemySide, etx, ety))//得提前一步预判
+
+		//如果已经卡住——那都已经固若金汤了，那就不搞别的防御策略了
+		if (has_unique_dsc_dir(enemySide, ex, ey))
+			if (x == etx && y == ety)
+				return;
 		if(has_unique_dsc_dir(enemySide, ex, ey) && has_unique_dsc_dir(enemySide,etx,ety))
 		{
 			int dir1 = get_unique_dsc_dir(enemySide, etx, ety);
 			int ettx = etx + dx[dir1];
 			int etty = ety + dy[dir1];//敌人两步后的位置
 
-			//如果已经卡住——那都已经固若金汤了，那就不搞别的防御策略了
-			if (x == etx && y == ety)
-				return;
+			
 			if (x == ettx && y == etty)
 				return;
 			if (is_none(etx, ety) && is_none(ettx, etty))
@@ -1564,17 +1567,17 @@ namespace TankGame
 				//min_path[enemySide][enemyTank][0][5] += 1;
 				//min_path[enemySide][enemyTank][1][4] += 1;
 				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey >=2 && ex >= 3 && ex<=5)
-					min_path[enemySide][enemyTank][1][4] += 1;
+					min_path[enemySide][enemyTank][1][4] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey <= 1 && ex >= 6)
-					min_path[enemySide][enemyTank][0][5] += 1;
+					min_path[enemySide][enemyTank][0][5] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey <= 1 && ex <= 2)
-					min_path[enemySide][enemyTank][0][3] += 1;
+					min_path[enemySide][enemyTank][0][3] += 3;
 				else if (ey == 0 && ex >= 6)
-					min_path[enemySide][enemyTank][0][5] += 1;
+					min_path[enemySide][enemyTank][0][5] += 3;
 				else if (ey == 0 && ex <= 2)
-					min_path[enemySide][enemyTank][0][3] += 1;
+					min_path[enemySide][enemyTank][0][3] += 3;
 				else if (ex == 4)
-					min_path[enemySide][enemyTank][1][4] += 1;
+					min_path[enemySide][enemyTank][1][4] += 3;
 				else if (ex >= 5)
 					min_path[enemySide][enemyTank][1][5] += 5;
 				else if (ex <= 3)
@@ -1583,17 +1586,17 @@ namespace TankGame
 			else
 			{
 				if (min_step_to_base[enemySide][ey][ex] <= 3 && ey <= 7 && ex >= 3 && ex <= 5)
-					min_path[enemySide][enemyTank][7][4] += 1;
+					min_path[enemySide][enemyTank][7][4] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey >= 7 && ex >= 6)
-					min_path[enemySide][enemyTank][8][5] += 1;
+					min_path[enemySide][enemyTank][8][5] += 3;
 				else if (min_step_to_base[enemySide][ey][ex] <= 3 && ey >= 7 && ex <= 2)
-					min_path[enemySide][enemyTank][8][3] += 1;
+					min_path[enemySide][enemyTank][8][3] += 3;
 				else if (ey == 8 && ex >= 6)
-					min_path[enemySide][enemyTank][8][5] += 1;
+					min_path[enemySide][enemyTank][8][5] += 3;
 				else if (ey == 8 && ex <= 2)
-					min_path[enemySide][enemyTank][8][3] += 1;
+					min_path[enemySide][enemyTank][8][3] += 3;
 				else if (ex == 4)
-					min_path[enemySide][enemyTank][7][4] += 1;
+					min_path[enemySide][enemyTank][7][4] += 3;
 				else if (ex >= 5)
 					min_path[enemySide][enemyTank][7][5] += 5;
 				else if (ex <= 3)
