@@ -982,7 +982,7 @@ namespace TankGame
 			left_half = right_half = false;
 			//不再调用错误的BFS
 		}
-
+		//left_half = false, right_half = false;
 		value = 1;
 		for (j = baseX[side ^ 1] - 1; j >= 0 && (ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]) || field->gameField[baseY[side ^ 1]][j]==Brick); j--) {
 			if (field->gameField[baseY[side ^ 1]][j] == Brick) {
@@ -1909,7 +1909,7 @@ namespace TankGame
 				}
 			}
 			else {
-				int ans = Stay;//默认不动
+				int ansss = Stay;//默认不动
 				int gx, gy;
 				bool avoid_friend = min_step_to_base[side][fx][fy] == 1 && shoot_friend(side, tank_id ^ 1, tx, ty);
 				double risk = shot_range[side ^ 1][tx][ty], rfactor = GetRandom() + 0.5; //选取为1且射中风险最小的位置
@@ -1924,18 +1924,18 @@ namespace TankGame
 						if (!avoid_friend) temp += (min_step_to_base[side][gx][gy] - 0.9)*rfactor; //1的风险系数比2小很多
 						if (risk > shot_range[side ^ 1][gx][gy]) {
 							risk = shot_range[side ^ 1][gx][gy];
-							ans = dir;
+							ansss = dir;
 						}
-						else if (abs(risk-temp)<1e-7 && GetRandom() < 0.6) {
-							ans = dir; //两个风险一致，则有0.6的概率换方向移动
-						}
+						/*else if (abs(risk-temp)<1e-7 && GetRandom() < 0.6) {
+							
+						}*/
 					}
 				}
-				my_action[tank_id] = ans;
+				my_action[tank_id] = ansss;
 				if (risk > 0.001 && real_shot_range[side^1][tx][ty]>=0.001 && !force_move_mode) {
 					go_out_if = true;
 				}
-				if (!go_out_if && ans == Stay && avoid_friend) {
+				if (!go_out_if && ansss == Stay && avoid_friend) {
 					avoid_failed = true;
 					get_stupid_action(tank_id ^ 1);
 				}
