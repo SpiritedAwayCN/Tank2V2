@@ -1649,7 +1649,7 @@ namespace TankGame
 				else
 					my_action[tank] = Stay;
 			}
-			else if (real_shot_range[enemySide][ty][tx] == 0.0f)
+			else if (field->gameField[ty][tx] == None && real_shot_range[enemySide][ty][tx] == 0.0f)
 				my_action[tank] = (Action)std2sca(best_dir);
 			return;
 		}
