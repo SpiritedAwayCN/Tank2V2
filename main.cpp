@@ -2316,6 +2316,13 @@ namespace TankGame
 
 
 		shot_dir = IsUniqueDir(side, tx, ty);
+		if (shot_weight[ans] <= 1.5 && my_action[tank_id^1]==-2) {
+			if (ty == 4 && ans >= 2 && (ans + tank_id) % 2 == 1 && (tx - 4)*(side - 0.5) > 0) {
+				int gx = tx + next_step[ans][0], gy = ty + next_step[ans][1];
+				if (gy == fy && (fx - gx == (side ? 1 : -1)))
+					ans ^= 1;
+			}
+		}
 
 
 		if (shot_weight[ans] > 1.5) my_action[tank_id] += 4; //若别中的是射击，则方案+4
