@@ -984,7 +984,9 @@ namespace TankGame
 		}
 		//left_half = false, right_half = false;
 		value = 1;
-		for (j = baseX[side ^ 1] - 1; j >= 0 && (ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]) || field->gameField[baseY[side ^ 1]][j]==Brick); j--) {
+		for (j = baseX[side ^ 1] - 1; j >= 0 && (ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]) || field->gameField[baseY[side ^ 1]][j]==Brick 
+			|| field->gameField[baseY[side ^ 1]][j] == Water); j--) {
+			if (field->gameField[baseY[side ^ 1]][j] == Water) continue;
 			if (field->gameField[baseY[side ^ 1]][j] == Brick) {
 				if (left_half) break;
 				value += 2;
@@ -994,7 +996,9 @@ namespace TankGame
 			BFS_generate_queue.push(Coordinate{ baseY[side ^ 1], j });
 		}
 		value = 1;
-		for (j = baseX[side ^ 1] + 1; j < fieldWidth && (ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]) || field->gameField[baseY[side ^ 1]][j] == Brick); j++) {
+		for (j = baseX[side ^ 1] + 1; j < fieldWidth && (ItemIsAccessible(field->gameField[baseY[side ^ 1]][j]) || field->gameField[baseY[side ^ 1]][j] == Brick
+			|| field->gameField[baseY[side ^ 1]][j] == Water); j++) {
+			if (field->gameField[baseY[side ^ 1]][j] == Water) continue;
 			if (field->gameField[baseY[side ^ 1]][j] == Brick) {
 				if (right_half) break;
 				value += 2;
