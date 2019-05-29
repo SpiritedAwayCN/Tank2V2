@@ -808,9 +808,9 @@ namespace TankGame
 		return false;
 	}
 
-	inline Coordinate shoot_coord(int dir, int sx, int sy) {
-		int ii, jj;
-		for (ii = sx, jj = sy; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]);
+	inline Coordinate shoot_coord(int dir, int sx, int sy, bool IgnoreTank = true, int IgnoreSide = -1) {
+		int ii=sx, jj=sy;
+		for (ii += next_step[dir][0], jj += next_step[dir][1]; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj], IgnoreTank, IgnoreSide);
 			ii += next_step[dir][0], jj += next_step[dir][1]) {
 			if (field->gameField[ii][jj] == Brick) break;
 		}
@@ -1633,6 +1633,24 @@ namespace TankGame
 		{
 			if (my_action[tank] >= 0 && my_action[tank] <= 3 && real_shot_range[enemySide][y][x]==0.0f)
 				my_action[tank] = Stay;
+			if (my_action[tank] >= 4)
+			{
+				bool condition1 = (enemySide == Red) ? (ey <= 5) : (ey >= 3);
+				int _ex = field->tankX[enemySide][enemyTank ^ 1];
+				int _ey = field->tankY[enemySide][enemyTank ^ 1];
+				bool condition2 = (enemySide == Red) ? (_ey >= 5) : (_ey >= 3);
+
+				Coordinate c = shoot_coord(my_action[tank]-4, y, x, false);
+
+				bool condition3 = field->gameField[c.x][c.y] == Brick;
+				bool condition4 = (mySide == Blue) ? (c.x <= 2) : (c.x >= 6);
+				if (condition3 && condition4);//能射
+				else if (condition1 && condition2 && real_shot_range[enemySide][y][x] == 0.0f)
+				{
+					my_action[tank] = Stay;
+				}
+
+			}
 			return;
 		}
 		if (best_dir != -1)
