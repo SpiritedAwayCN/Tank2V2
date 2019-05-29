@@ -1970,7 +1970,7 @@ namespace TankGame
 						Coordinate cord = shoot_coord(shot_side, tx, ty);
 						my_action[tank_id] = shot_side + 4;
 						if (!shoot_friend(side, tank_id, fx, fy) && (!CoordValid(cord.x,cord.y) || min_path[side^1][tid^1][cord.x][cord.y]==0)
-							&& GetRandom() <= 0.2)
+							&& cord.x!=baseY[side] && GetRandom() <= 0.2)
 							return my_action[tank_id];
 						my_action[tank_id] = -2;
 					}
@@ -2076,7 +2076,7 @@ namespace TankGame
 				my_action[tank_id] = ans2; return my_action[tank_id];
 			}
 			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] >= min_step_to_base[side ^ 1][etx][ety] && (etx - 4)*(side - 0.5) >= 0
-				&& (etx - tx)*(side - 0.5) >= 0) {
+				&& (etx - tx)*(side - 0.5) <= 0) {
 				stay_for_beat[tank_id] = true;
 			}
 			else if (real_shot_range[side ^ 1][tx][ty] < 0.001 && min_step_to_base[side][tx][ty] < min_step_to_base[side ^ 1][tx][ty]
