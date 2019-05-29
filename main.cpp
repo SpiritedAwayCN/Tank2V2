@@ -799,6 +799,7 @@ namespace TankGame
 	}
 
 	inline bool shoot_friend(int side,int tank_id,int fx, int fy) {
+		if (!field->tankAlive[side][tank_id ^ 1]) return false;
 		if (my_action[tank_id] < 4) return false;
 		int dir = my_action[tank_id] - 4;
 		for (int ii = field->tankY[side][tank_id], jj = field->tankX[side][tank_id]; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]);
@@ -2027,7 +2028,7 @@ namespace TankGame
 				if (field->gameField[gx][gy] == Brick && force_move_mode) act[i] = -1.8;
 			}
 			act[i] += 0.8;
-			if (my_action[tank_id ^ 1] != -2 && gx==fx && gy==fy) {
+			if (my_action[tank_id ^ 1] != -2 && gx==fx && gy==fy && field->tankAlive[side][tank_id^1]) {
 				act[i] = -0.1;
 			}
 		}
@@ -2039,7 +2040,7 @@ namespace TankGame
 			// 不要怂 直接刚 看看是哪个方向
 			for (int dir = 0; dir < 4; dir++) {
 				for (int ii = tx, jj = ty; CoordValid(ii, jj) && CanBulletAcross(field->gameField[ii][jj]); ii += next_step[dir][0], jj += next_step[dir][1]) {
-					if (fx == ii && fy == jj)break; //停火，友军！
+					if (field->tankAlive[side][tank_id ^ 1]  && fx == ii && fy == jj)break; //停火，友军！
 
 					if ((IsTank(field->gameField[ii][jj]) && GetTankSide(field->gameField[ii][jj]) != side)
 						|| HasMultipleTank(field->gameField[ii][jj])) {
@@ -2079,7 +2080,7 @@ namespace TankGame
 								}
 							}
 						}
-						if (mrisk > 0 || min_step_to_base[side][tx][ty] <= mdis || min_step_to_base[side][tx][ty] > min_step_to_base[side][fx][fy])
+						if (mrisk > 0 || min_step_to_base[side][tx][ty] <= mdis || (field->tankAlive[side][tank_id^1] &&  min_step_to_base[side][tx][ty] > min_step_to_base[side][fx][fy]))
 						{
 							my_action[tank_id] = ans + 4; return my_action[tank_id];
 						} //保命第一位，干
@@ -2128,7 +2129,7 @@ namespace TankGame
 				for (int dir = 0; dir < 4; dir++) {
 					if (!ItemIsAccessible(field->gameField[tx + next_step[dir][0]][ty + next_step[dir][1]], false)) continue;
 					if (!InShootRange(field->tankY[side^1][tid^1],field->tankX[side^1][tid^1], tx + next_step[dir][0], ty + next_step[dir][1])
-						&& !(fx== tx + next_step[dir][0] && fy== ty + next_step[dir][1])) {
+						&& !(fx== tx + next_step[dir][0] && fy== ty + next_step[dir][1] && field->tankAlive[side][tank_id ^ 1])) {
 						ans2 = dir;  break;
 					}
 				}
